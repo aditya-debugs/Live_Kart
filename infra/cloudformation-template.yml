@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: LiveKart minimal infra skeleton (Cognito, S3, DynamoDB)
+Resources:
+  LiveKartProductsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: LiveKartProducts
+      AttributeDefinitions:
+        - AttributeName: product_id
+          AttributeType: S
+        - AttributeName: vendor_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: product_id
+          KeyType: HASH
+        - AttributeName: vendor_id
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  LiveKartImagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: livekart-product-images
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+        IgnorePublicAcls: false
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: LiveKartUserPool
+      AutoVerifiedAttributes:
+        - email
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: livekart-client
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+
+Outputs:
+  ProductsTable:
+    Value: !Ref LiveKartProductsTable
+    Export:
+      Name: LiveKartProductsTableName
+  ImagesBucket:
+    Value: !Ref LiveKartImagesBucket
+    Export:
+      Name: LiveKartImagesBucketName
+  UserPoolId:
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: LiveKartUserPoolId
+  UserPoolClientId:
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: LiveKartUserPoolClientId
+# Notes:
+# - CloudFront distribution should be created after uploading the S3 bucket and configuring the bucket policy and origin access identity.
+# - SES sender verification and IAM role for Lambda to call SES must be configured in the AWS Console or additional resources.

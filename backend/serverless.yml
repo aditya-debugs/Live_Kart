@@ -1,0 +1,44 @@
+service: livekart-backend
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ${env:AWS_REGION, 'us-east-1'}
+  environment:
+    DDB_TABLE: LiveKartProducts
+    S3_BUCKET: livekart-product-images
+    SES_SENDER: noreply@yourdomain.com
+
+functions:
+  api:
+    handler: src/index.handler
+    events:
+      - http:
+          path: /{proxy+}
+          method: any
+          cors: true
+
+plugins:
+  - serverless-offline
+
+resources:
+  Resources:
+    LiveKartProductsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: LiveKartProducts
+        AttributeDefinitions:
+          - AttributeName: product_id
+            AttributeType: S
+          - AttributeName: vendor_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: product_id
+            KeyType: HASH
+          - AttributeName: vendor_id
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+    LiveKartImagesBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: livekart-product-images
