@@ -1,7 +1,846 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: LiveKart minimal infra skeleton (Cognito, S3, DynamoDB)
+Description: LiveKart E-commerce Platform - Six AWS Services (Cognito, S3, CloudFront, SES, Lambda, DynamoDB) - Free Tier Optimized
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    Description: Environment name (production, staging, dev)
+  
+  SESVerifiedEmail:
+    Type: String
+    Description: Your verified email address for SES (sandbox mode)
+    Default: your-email@example.com
+
 Resources:
-  LiveKartProductsTable:
+  # ==========================================
+  # 1. AWS COGNITO - User Authentication & Authorization
+  # ==========================================
+  
+  LiveKartUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${EnvironmentName}-livekart-users
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: false
+        - Name: name
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: role
+          AttributeDataType: String
+          Mutable: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      UserPoolTags:
+        Environment: !Ref EnvironmentName
+        Service: Authentication
+
+  LiveKartUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub ${EnvironmentName}-livekart-web-client
+      UserPoolId: !Ref LiveKartUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      PreventUserExistenceErrors: ENABLED
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+
+  # Cognito Groups for Role-Based Access
+  CustomerGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: customers
+      Description: Customer users
+      UserPoolId: !Ref LiveKartUserPool
+      Precedence: 3
+
+  VendorGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: vendors
+      Description: Vendor users who can sell products
+      UserPoolId: !Ref LiveKartUserPool
+      Precedence: 2
+
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: admins
+      Description: Administrator users
+      UserPoolId: !Ref LiveKartUserPool
+      Precedence: 1
+
+  # ==========================================
+  # 2. AWS S3 - Product Image Storage
+  # ==========================================
+  
+  ProductImagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${EnvironmentName}-livekart-product-images-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldThumbnails
+            Status: Enabled
+            ExpirationInDays: 90
+            Prefix: thumbnails/
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - HEAD
+            AllowedOrigins:
+              - "*"
+            MaxAge: 3000
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Service
+          Value: Storage
+
+  ProductImagesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ProductImagesBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontAccess
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub ${ProductImagesBucket.Arn}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${ProductImagesCDN}
+
+  # ==========================================
+  # 3. AWS CLOUDFRONT - CDN for Image Distribution
+  # ==========================================
+  
+  CloudFrontOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub ${EnvironmentName}-livekart-oac
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  ProductImagesCDN:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub ${EnvironmentName} LiveKart Product Images CDN
+        PriceClass: PriceClass_100
+        HttpVersion: http2
+        Origins:
+          - Id: S3-ProductImages
+            DomainName: !GetAtt ProductImagesBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+            OriginAccessControlId: !GetAtt CloudFrontOriginAccessControl.Id
+        DefaultCacheBehavior:
+          TargetOriginId: S3-ProductImages
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Service
+          Value: CDN
+
+  # ==========================================
+  # 4. AWS DYNAMODB - Fast Data Storage
+  # ==========================================
+  
+  # Main Products Table
+  ProductsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${EnvironmentName}-livekart-products
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: product_id
+          AttributeType: S
+        - AttributeName: vendor_id
+          AttributeType: S
+        - AttributeName: category
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: N
+      KeySchema:
+        - AttributeName: product_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: vendor-index
+          KeySchema:
+            - AttributeName: vendor_id
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: category-index
+          KeySchema:
+            - AttributeName: category
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Service
+          Value: Database
+
+  # User Sessions Table
+  SessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${EnvironmentName}-livekart-sessions
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: user-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Product View Counts & Trending
+  ProductAnalyticsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${EnvironmentName}-livekart-analytics
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: product_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      KeySchema:
+        - AttributeName: product_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Orders Table
+  OrdersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${EnvironmentName}-livekart-orders
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: order_id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: N
+      KeySchema:
+        - AttributeName: order_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: user-orders-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ==========================================
+  # 5. AWS LAMBDA - Serverless Backend Logic
+  # ==========================================
+  
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${EnvironmentName}-livekart-lambda-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: LiveKartLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:DeleteItem
+                Resource:
+                  - !GetAtt ProductsTable.Arn
+                  - !Sub ${ProductsTable.Arn}/index/*
+                  - !GetAtt OrdersTable.Arn
+                  - !Sub ${OrdersTable.Arn}/index/*
+                  - !GetAtt SessionsTable.Arn
+                  - !Sub ${SessionsTable.Arn}/index/*
+                  - !GetAtt ProductAnalyticsTable.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:GeneratePresignedUrl
+                Resource: !Sub ${ProductImagesBucket.Arn}/*
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminGetUser
+                  - cognito-idp:AdminUpdateUserAttributes
+                Resource: !GetAtt LiveKartUserPool.Arn
+
+  # Lambda Layer for dependencies (boto3, etc.)
+  LambdaDependenciesLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: !Sub ${EnvironmentName}-livekart-dependencies
+      Description: Common dependencies for LiveKart Lambda functions
+      CompatibleRuntimes:
+        - python3.11
+        - python3.12
+
+  # Order Validation Lambda
+  OrderValidationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${EnvironmentName}-livekart-order-validation
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          PRODUCTS_TABLE: !Ref ProductsTable
+          ORDERS_TABLE: !Ref OrdersTable
+          ENVIRONMENT: !Ref EnvironmentName
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          from decimal import Decimal
+          
+          dynamodb = boto3.resource('dynamodb')
+          products_table = dynamodb.Table(os.environ['PRODUCTS_TABLE'])
+          orders_table = dynamodb.Table(os.environ['ORDERS_TABLE'])
+          
+          def lambda_handler(event, context):
+              """Validate order items and pricing"""
+              try:
+                  body = json.loads(event['body'])
+                  items = body.get('items', [])
+                  
+                  # Validate each item
+                  total = Decimal('0')
+                  for item in items:
+                      product_id = item['product_id']
+                      quantity = int(item['quantity'])
+                      
+                      # Get product from DB
+                      response = products_table.get_item(Key={'product_id': product_id})
+                      if 'Item' not in response:
+                          return {
+                              'statusCode': 400,
+                              'body': json.dumps({'error': f'Product {product_id} not found'})
+                          }
+                      
+                      product = response['Item']
+                      if not product.get('inStock', False):
+                          return {
+                              'statusCode': 400,
+                              'body': json.dumps({'error': f'Product {product_id} out of stock'})
+                          }
+                      
+                      total += Decimal(str(product['price'])) * quantity
+                  
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'valid': True,
+                          'total': float(total)
+                      })
+                  }
+              except Exception as e:
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Image Processing Lambda (Thumbnail Generation)
+  ImageProcessingFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${EnvironmentName}-livekart-image-processing
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      MemorySize: 512
+      Environment:
+        Variables:
+          IMAGES_BUCKET: !Ref ProductImagesBucket
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          from io import BytesIO
+          from PIL import Image
+          
+          s3 = boto3.client('s3')
+          bucket = os.environ['IMAGES_BUCKET']
+          
+          def lambda_handler(event, context):
+              """Generate thumbnails for uploaded images"""
+              try:
+                  # Get the uploaded file info
+                  for record in event['Records']:
+                      source_key = record['s3']['object']['key']
+                      
+                      # Skip if already a thumbnail
+                      if source_key.startswith('thumbnails/'):
+                          continue
+                      
+                      # Download original image
+                      response = s3.get_object(Bucket=bucket, Key=source_key)
+                      image_data = response['Body'].read()
+                      
+                      # Create thumbnail
+                      img = Image.open(BytesIO(image_data))
+                      img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+                      
+                      # Save thumbnail
+                      buffer = BytesIO()
+                      img.save(buffer, format=img.format or 'JPEG')
+                      buffer.seek(0)
+                      
+                      thumbnail_key = f"thumbnails/{source_key}"
+                      s3.put_object(
+                          Bucket=bucket,
+                          Key=thumbnail_key,
+                          Body=buffer.getvalue(),
+                          ContentType=response['ContentType']
+                      )
+                  
+                  return {'statusCode': 200, 'body': 'Thumbnails generated'}
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  return {'statusCode': 500, 'body': str(e)}
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # S3 trigger for image processing
+  ImageProcessingPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ImageProcessingFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !GetAtt ProductImagesBucket.Arn
+
+  # Cleanup Job Lambda (Delete old sessions, analytics)
+  CleanupJobFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${EnvironmentName}-livekart-cleanup-job
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 300
+      MemorySize: 256
+      Environment:
+        Variables:
+          ANALYTICS_TABLE: !Ref ProductAnalyticsTable
+          SESSIONS_TABLE: !Ref SessionsTable
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          from datetime import datetime, timedelta
+          
+          dynamodb = boto3.resource('dynamodb')
+          
+          def lambda_handler(event, context):
+              """Cleanup old analytics data and expired sessions"""
+              try:
+                  # Clean analytics older than 90 days
+                  analytics_table = dynamodb.Table(os.environ['ANALYTICS_TABLE'])
+                  cutoff = int((datetime.now() - timedelta(days=90)).timestamp() * 1000)
+                  
+                  # Scan and delete old items (simplified - use batch in production)
+                  response = analytics_table.scan(
+                      FilterExpression='#ts < :cutoff',
+                      ExpressionAttributeNames={'#ts': 'timestamp'},
+                      ExpressionAttributeValues={':cutoff': cutoff}
+                  )
+                  
+                  deleted_count = 0
+                  for item in response.get('Items', []):
+                      analytics_table.delete_item(
+                          Key={
+                              'product_id': item['product_id'],
+                              'timestamp': item['timestamp']
+                          }
+                      )
+                      deleted_count += 1
+                  
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'message': f'Cleaned up {deleted_count} old analytics records'
+                      })
+                  }
+              except Exception as e:
+                  return {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # EventBridge rule to run cleanup job daily
+  CleanupJobSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Daily cleanup job for LiveKart
+      ScheduleExpression: rate(1 day)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt CleanupJobFunction.Arn
+          Id: CleanupJobTarget
+
+  CleanupJobSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CleanupJobFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CleanupJobSchedule.Arn
+
+  # ==========================================
+  # 6. AWS SES - Email Service (Sandbox Mode)
+  # ==========================================
+  
+  # SES Email Identity
+  SESEmailIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref SESVerifiedEmail
+
+  # Email Sending Lambda
+  EmailNotificationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${EnvironmentName}-livekart-email-notifications
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          FROM_EMAIL: !Ref SESVerifiedEmail
+          ENVIRONMENT: !Ref EnvironmentName
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          
+          ses = boto3.client('ses')
+          from_email = os.environ['FROM_EMAIL']
+          
+          def lambda_handler(event, context):
+              """Send transactional emails"""
+              try:
+                  body = json.loads(event['body'])
+                  email_type = body.get('type')
+                  to_email = body.get('to_email')
+                  data = body.get('data', {})
+                  
+                  if email_type == 'order_confirmation':
+                      subject = f"Order Confirmation - #{data.get('order_id')}"
+                      html_body = f"""
+                      <html>
+                        <body>
+                          <h2>Thank you for your order!</h2>
+                          <p>Order ID: {data.get('order_id')}</p>
+                          <p>Total: ${data.get('total', 0):.2f}</p>
+                          <p>We'll send you a shipping confirmation when your order ships.</p>
+                        </body>
+                      </html>
+                      """
+                  elif email_type == 'vendor_notification':
+                      subject = "New Order - Action Required"
+                      html_body = f"""
+                      <html>
+                        <body>
+                          <h2>You have a new order!</h2>
+                          <p>Order ID: {data.get('order_id')}</p>
+                          <p>Please process this order promptly.</p>
+                        </body>
+                      </html>
+                      """
+                  else:
+                      return {
+                          'statusCode': 400,
+                          'body': json.dumps({'error': 'Invalid email type'})
+                      }
+                  
+                  response = ses.send_email(
+                      Source=from_email,
+                      Destination={'ToAddresses': [to_email]},
+                      Message={
+                          'Subject': {'Data': subject},
+                          'Body': {'Html': {'Data': html_body}}
+                      }
+                  )
+                  
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'message': 'Email sent successfully',
+                          'messageId': response['MessageId']
+                      })
+                  }
+              except Exception as e:
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+# ==========================================
+# OUTPUTS
+# ==========================================
+
+Outputs:
+  # Cognito Outputs
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref LiveKartUserPool
+    Export:
+      Name: !Sub ${EnvironmentName}-UserPoolId
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref LiveKartUserPoolClient
+    Export:
+      Name: !Sub ${EnvironmentName}-UserPoolClientId
+
+  UserPoolArn:
+    Description: Cognito User Pool ARN
+    Value: !GetAtt LiveKartUserPool.Arn
+    Export:
+      Name: !Sub ${EnvironmentName}-UserPoolArn
+
+  # S3 Outputs
+  ProductImagesBucketName:
+    Description: S3 Bucket for Product Images
+    Value: !Ref ProductImagesBucket
+    Export:
+      Name: !Sub ${EnvironmentName}-ProductImagesBucket
+
+  ProductImagesBucketArn:
+    Description: S3 Bucket ARN
+    Value: !GetAtt ProductImagesBucket.Arn
+    Export:
+      Name: !Sub ${EnvironmentName}-ProductImagesBucketArn
+
+  # CloudFront Outputs
+  CloudFrontDistributionId:
+    Description: CloudFront Distribution ID
+    Value: !Ref ProductImagesCDN
+    Export:
+      Name: !Sub ${EnvironmentName}-CloudFrontDistributionId
+
+  CloudFrontDomainName:
+    Description: CloudFront Domain Name for Image Delivery
+    Value: !GetAtt ProductImagesCDN.DomainName
+    Export:
+      Name: !Sub ${EnvironmentName}-CloudFrontDomain
+
+  CloudFrontURL:
+    Description: CloudFront URL
+    Value: !Sub https://${ProductImagesCDN.DomainName}
+    Export:
+      Name: !Sub ${EnvironmentName}-CloudFrontURL
+
+  # DynamoDB Outputs
+  ProductsTableName:
+    Description: DynamoDB Products Table Name
+    Value: !Ref ProductsTable
+    Export:
+      Name: !Sub ${EnvironmentName}-ProductsTable
+
+  OrdersTableName:
+    Description: DynamoDB Orders Table Name
+    Value: !Ref OrdersTable
+    Export:
+      Name: !Sub ${EnvironmentName}-OrdersTable
+
+  SessionsTableName:
+    Description: DynamoDB Sessions Table Name
+    Value: !Ref SessionsTable
+    Export:
+      Name: !Sub ${EnvironmentName}-SessionsTable
+
+  AnalyticsTableName:
+    Description: DynamoDB Analytics Table Name
+    Value: !Ref ProductAnalyticsTable
+    Export:
+      Name: !Sub ${EnvironmentName}-AnalyticsTable
+
+  # Lambda Outputs
+  OrderValidationFunctionArn:
+    Description: Order Validation Lambda Function ARN
+    Value: !GetAtt OrderValidationFunction.Arn
+    Export:
+      Name: !Sub ${EnvironmentName}-OrderValidationFunctionArn
+
+  ImageProcessingFunctionArn:
+    Description: Image Processing Lambda Function ARN
+    Value: !GetAtt ImageProcessingFunction.Arn
+    Export:
+      Name: !Sub ${EnvironmentName}-ImageProcessingFunctionArn
+
+  EmailNotificationFunctionArn:
+    Description: Email Notification Lambda Function ARN
+    Value: !GetAtt EmailNotificationFunction.Arn
+    Export:
+      Name: !Sub ${EnvironmentName}-EmailNotificationFunctionArn
+
+  CleanupJobFunctionArn:
+    Description: Cleanup Job Lambda Function ARN
+    Value: !GetAtt CleanupJobFunction.Arn
+    Export:
+      Name: !Sub ${EnvironmentName}-CleanupJobFunctionArn
+
+  # SES Outputs
+  SESFromEmail:
+    Description: SES Verified Email Address
+    Value: !Ref SESVerifiedEmail
+    Export:
+      Name: !Sub ${EnvironmentName}-SESFromEmail
+
+  # General
+  StackName:
+    Description: CloudFormation Stack Name
+    Value: !Ref AWS::StackName
+
+  Region:
+    Description: AWS Region
+    Value: !Ref AWS::Region
+
+  AccountId:
+    Description: AWS Account ID
+    Value: !Ref AWS::AccountId
+
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: LiveKartProducts
@@ -61,3 +900,4 @@ Outputs:
 # Notes:
 # - CloudFront distribution should be created after uploading the S3 bucket and configuring the bucket policy and origin access identity.
 # - SES sender verification and IAM role for Lambda to call SES must be configured in the AWS Console or additional resources.
+

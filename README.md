@@ -1,86 +1,203 @@
-# LiveKart — E-Commerce Platform MVP
+# LiveKart — E-Commerce Platform
 
-A modern, full-stack e-commerce platform built with React, TypeScript, Node.js, and Express. Currently running in development mode with mock data, ready for AWS integration.
+A modern, serverless e-commerce platform built with React, TypeScript, and AWS services. Features production-ready authentication, image storage, email notifications, and real-time analytics.
+
+---
+
+## 🚀 Quick Start
+
+**New to AWS?** → Start with **[QUICK_START.md](./QUICK_START.md)** (45-minute setup)
+
+**Ready to deploy?** → Run: `powershell -ExecutionPolicy Bypass -File deploy.ps1`
+
+---
+
+## 🏗️ Architecture
+
+### AWS Services (6 Total - Free Tier Optimized)
+
+```
+Frontend (React + Vite)
+         ↓
+    AWS Cognito (Auth + JWT)
+         ↓
+    AWS Lambda (API)
+    ├── Order Validation
+    ├── Image Processing
+    ├── Email Notifications
+    └── Cleanup Jobs
+         ↓
+    ┌────────────┬────────────┬────────────┐
+    ↓            ↓            ↓            ↓
+DynamoDB     AWS S3    CloudFront    AWS SES
+(Database)  (Images)    (CDN)      (Emails)
+```
+
+### Technology Stack
+
+**Frontend:**
+
+- React 18 + TypeScript
+- Vite (Build tool)
+- Tailwind CSS (Styling)
+- AWS Amplify (AWS SDK)
+- React Router (Navigation)
+
+**Backend:**
+
+- AWS Lambda (Python 3.11)
+- AWS API Gateway
+- Serverless architecture
+
+**Database:**
+
+- DynamoDB (NoSQL)
+- 4 Tables: Products, Orders, Sessions, Analytics
+
+**Storage & CDN:**
+
+- S3 (Product images)
+- CloudFront (Global CDN)
+
+**Authentication:**
+
+- AWS Cognito User Pools
+- JWT tokens
+- Role-based access (Customer, Vendor, Admin)
+
+**Email:**
+
+- AWS SES (Transactional emails)
 
 ## 🌟 Features
 
 ### Customer Features
 
-- 🛍️ Browse products with beautiful card layouts
-- 🔍 Search and filter products by category
+- 🛍️ Browse products with professional UI
+- 🔍 Search and filter by category
 - 🛒 Shopping cart with real-time updates
-- 💳 Simple checkout process
+- 💳 Secure checkout process
 - 📱 Fully responsive design
+- 🔐 JWT-based authentication
+- 📧 Order confirmation emails
 
 ### Vendor Features
 
 - 💼 Add and manage products
-- 📊 View product analytics (views, revenue)
+- 📸 Upload product images to S3
+- 📊 View product analytics
 - 🏷️ Categorize products
-- 📸 Product image support (URL-based)
+- 🖼️ Automatic thumbnail generation
 
 ### Admin Features
 
-- 📈 Platform analytics dashboard
-- 🔥 Trending products overview
+- � Platform analytics dashboard
+- 🔥 Trending products tracking
 - 📊 Revenue and view statistics
-- 🆕 Recent product listings
+- 👥 User management via Cognito
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ installed
-- npm or yarn package manager
+- ✅ Node.js 18+
+- ✅ AWS Account (Free Tier eligible)
+- ✅ AWS CLI installed and configured
+- ✅ PowerShell (Windows) or Bash (Mac/Linux)
 
-### Installation & Running
+### 🎯 Deployment Steps (Choose One)
 
-1. **Install Backend Dependencies:**
+#### ⚡ Quick Start (Recommended)
 
-```bash
-cd backend
-npm install
-```
+Follow the **[QUICK_START.md](./QUICK_START.md)** guide for a complete walkthrough!
 
-2. **Install Frontend Dependencies:**
+#### 🔧 Manual Deployment (Windows PowerShell)
 
-```bash
+```powershell
+# 1. Deploy AWS infrastructure (5-10 minutes)
+powershell -ExecutionPolicy Bypass -File deploy.ps1
+
+# 2. Create user groups
+powershell -ExecutionPolicy Bypass -File scripts/create-user-groups.ps1
+
+# 3. Create test users
+powershell -ExecutionPolicy Bypass -File scripts/create-test-users.ps1
+
+# 4. Install frontend dependencies
 cd frontend
 npm install
-```
 
-3. **Start Backend Server:**
-
-```bash
-cd backend
-npm start
-# Server runs on http://localhost:3000
-```
-
-4. **Start Frontend Development Server:**
-
-```bash
-cd frontend
+# 5. Start development server
 npm run dev
-# Frontend runs on http://localhost:5173
 ```
 
-5. **Access the Application:**
+#### 🐧 Manual Deployment (Mac/Linux Bash)
 
-- Open your browser to `http://localhost:5173`
-- Use demo credentials to login (see below)
+```bash
+# 1. Deploy AWS infrastructure (5-10 minutes)
+chmod +x deploy.sh
+./deploy.sh
 
-## 🔐 Demo Credentials
+# 2. Create test users
+chmod +x scripts/create-test-users.sh
+./scripts/create-test-users.sh
 
-### Customer Account
+# 3. Install frontend dependencies
+cd frontend
+npm install
 
-- **Email:** customer@livekart.com
-- **Password:** customer123
+# 4. Start development server
+npm run dev
+```
 
-### Vendor Account
+### 🔐 Test Credentials
 
-- **Email:** vendor@livekart.com
-- **Password:** vendor123
+After deployment, login with:
+
+- **Customer:** `customer@livekart.com` / `Customer123!`
+- **Vendor:** `vendor@livekart.com` / `Vendor123!`
+- **Admin:** `admin@livekart.com` / `Admin123!`
+
+Visit `http://localhost:5173`
+
+### 6. Test Credentials
+
+**Admin:**
+
+- Email: `admin@livekart.com`
+- Password: `Admin123!`
+
+**Vendor:**
+
+- Email: `vendor@livekart.com`
+- Password: `Vendor123!`
+
+**Customer:**
+
+- Email: `customer@livekart.com`
+- Password: `Customer123!`
+
+## 📚 Documentation
+
+## 📚 Documentation
+
+### 📖 Getting Started
+
+- **[🚀 Quick Start Guide](./QUICK_START.md)** - Complete 45-minute setup checklist
+- **[🔧 AWS Setup Guide](./AWS_SETUP_GUIDE.md)** - Detailed AWS account setup with screenshots
+
+### 🏗️ Deployment
+
+- **[📋 Deployment Guide](./AWS_DEPLOYMENT_GUIDE.md)** - Technical deployment details
+- **[📊 Integration Summary](./AWS_INTEGRATION_SUMMARY.md)** - What's been implemented
+
+### 🛠️ Architecture & Code
+
+- **[🏛️ Infrastructure README](./infra/README.md)** - AWS services architecture
+- **[⚙️ Frontend Config](./frontend/src/config/aws-config.ts)** - AWS configuration
+- **[📸 S3 Upload Utils](./frontend/src/utils/s3Upload.ts)** - Image upload utilities
+
+---
 
 ### Admin Account
 
