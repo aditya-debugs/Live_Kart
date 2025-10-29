@@ -91,6 +91,92 @@ let mockProducts = [
     views: 98,
     category: "Sports",
   },
+  {
+    product_id: "7",
+    vendor_id: "vendor4",
+    title: "4K Action Camera",
+    description: "Durable 4K waterproof action camera with image stabilization",
+    price: 129.99,
+    imageUrl:
+      "https://images.unsplash.com/photo-1519183071298-a2962be90b5b?w=500",
+    views: 212,
+    category: "Electronics",
+  },
+  {
+    product_id: "8",
+    vendor_id: "vendor5",
+    title: "Modern Table Lamp",
+    description: "Adjustable LED table lamp with warm/cool light modes",
+    price: 39.99,
+    imageUrl:
+      "https://images.unsplash.com/photo-1505691723518-36a7b6a2a8f8?w=500",
+    views: 76,
+    category: "Home",
+  },
+  {
+    product_id: "9",
+    vendor_id: "vendor6",
+    title: "Organic Face Moisturizer",
+    description: "Lightweight daily moisturizer with natural ingredients",
+    price: 24.99,
+    imageUrl:
+      "https://images.unsplash.com/photo-1580913428796-0b0e9b1f8d0f?w=500",
+    views: 142,
+    category: "Beauty",
+  },
+  {
+    product_id: "10",
+    vendor_id: "vendor7",
+    title: "Kids Educational Puzzle",
+    description: "Colorful wooden puzzle to boost fine motor skills",
+    price: 19.99,
+    imageUrl: "https://images.unsplash.com/photo-1543163521-1bf539c55a5b?w=500",
+    views: 54,
+    category: "Kids",
+  },
+  {
+    product_id: "11",
+    vendor_id: "vendor8",
+    title: "Ceramic Dinner Set (12 pcs)",
+    description: "Durable ceramic dinnerware set with modern finish",
+    price: 89.99,
+    imageUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=500",
+    views: 88,
+    category: "Home",
+  },
+  {
+    product_id: "12",
+    vendor_id: "vendor9",
+    title: "Wireless Charging Pad",
+    description: "Fast Qi wireless charger compatible with latest phones",
+    price: 29.99,
+    imageUrl:
+      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500",
+    views: 167,
+    category: "Electronics",
+  },
+  {
+    product_id: "13",
+    vendor_id: "vendor10",
+    title: "Stylish Sunglasses",
+    description: "UV-protective polarized sunglasses with classic frame",
+    price: 59.99,
+    imageUrl:
+      "https://images.unsplash.com/photo-1503342452485-86f7b5b9f0f5?w=500",
+    views: 121,
+    category: "Fashion",
+  },
+  {
+    product_id: "14",
+    vendor_id: "vendor11",
+    title: "Electric Kettle",
+    description: "1.7L stainless steel electric kettle with auto shut-off",
+    price: 34.99,
+    imageUrl:
+      "https://images.unsplash.com/photo-1526318472351-c75fcf0702a4?w=500",
+    views: 103,
+    category: "Home",
+  },
 ];
 
 // ===== MOCK S3 UPLOAD ENDPOINT =====

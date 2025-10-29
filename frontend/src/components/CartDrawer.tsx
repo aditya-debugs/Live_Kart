@@ -71,7 +71,7 @@ export default function CartDrawer({
                 <Dialog.Panel className="pointer-events-auto w-screen max-w-md">
                   <div className="flex h-full flex-col bg-white shadow-xl">
                     {/* Header */}
-                    <div className="flex items-center justify-between bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-6">
+                    <div className="flex items-center justify-between bg-[#8C5630] px-4 py-6">
                       <Dialog.Title className="text-xl font-bold text-white">
                         Shopping Cart ({items.length})
                       </Dialog.Title>
@@ -96,7 +96,7 @@ export default function CartDrawer({
                           </p>
                           <button
                             onClick={onClose}
-                            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition"
+                            className="bg-[#8C5630] text-white px-6 py-2 rounded-lg hover:bg-[#734628] transition"
                           >
                             Continue Shopping
                           </button>
@@ -135,8 +135,8 @@ export default function CartDrawer({
                                   <h3 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2">
                                     {item.title}
                                   </h3>
-                                  <p className="text-lg font-bold text-indigo-600 mb-2">
-                                    ${item.price.toFixed(2)}
+                                  <p className="text-lg font-bold text-[#8C5630] mb-2">
+                                    ₹{item.price.toLocaleString("en-IN")}
                                   </p>
 
                                   <div className="flex items-center justify-between mt-auto">
@@ -206,7 +206,7 @@ export default function CartDrawer({
                             <div className="flex justify-between">
                               <span className="text-gray-600">Subtotal</span>
                               <span className="font-semibold">
-                                ${subtotal.toFixed(2)}
+                                ₹{Math.round(subtotal).toLocaleString("en-IN")}
                               </span>
                             </div>
                             <div className="flex justify-between">
@@ -224,20 +224,20 @@ export default function CartDrawer({
                             <div className="flex justify-between">
                               <span className="text-gray-600">Tax</span>
                               <span className="font-semibold">
-                                ${tax.toFixed(2)}
+                                ₹{Math.round(tax).toLocaleString("en-IN")}
                               </span>
                             </div>
                             <div className="flex justify-between border-t pt-2 text-lg">
                               <span className="font-bold">Total</span>
-                              <span className="font-bold text-indigo-600">
-                                ${total.toFixed(2)}
+                              <span className="font-bold text-[#8C5630]">
+                                ₹{Math.round(total).toLocaleString("en-IN")}
                               </span>
                             </div>
                           </div>
 
                           <button
                             onClick={onCheckout}
-                            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 rounded-lg transition shadow-md hover:shadow-lg"
+                            className="w-full bg-[#8C5630] hover:bg-[#734628] text-white font-bold py-3 rounded-lg transition shadow-md hover:shadow-lg"
                           >
                             Proceed to Checkout
                           </button>

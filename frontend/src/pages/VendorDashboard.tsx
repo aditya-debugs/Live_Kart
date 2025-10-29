@@ -187,7 +187,7 @@ export default function VendorDashboard() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              className="w-full py-3 bg-[#8C5630] text-white rounded-lg hover:bg-[#754626] transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {loading ? (
                 <>
@@ -238,7 +238,7 @@ export default function VendorDashboard() {
               myProducts.map((product) => (
                 <div
                   key={product.product_id}
-                  className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                  className="flex items-center gap-4 p-4 bg-[#F5E6D3] rounded-lg hover:bg-[#E6D7C3] transition"
                 >
                   <img
                     src={product.imageUrl || "https://via.placeholder.com/80"}
@@ -254,7 +254,7 @@ export default function VendorDashboard() {
                     </p>
                     {product.views !== undefined && (
                       <p className="text-xs text-gray-500 mt-1">
-                        👁️ {product.views} views
+                        {product.views} views
                       </p>
                     )}
                   </div>
@@ -267,17 +267,17 @@ export default function VendorDashboard() {
 
       {/* Quick Stats */}
       <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-6 shadow-lg">
+        <div className="bg-gradient-to-br from-[#8C5630] to-[#754626] text-white rounded-xl p-6 shadow-lg">
           <h3 className="text-lg font-semibold mb-2">Total Products</h3>
           <p className="text-4xl font-bold">{myProducts.length}</p>
         </div>
-        <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-6 shadow-lg">
+        <div className="bg-gradient-to-br from-[#A66B3A] to-[#8C5630] text-white rounded-xl p-6 shadow-lg">
           <h3 className="text-lg font-semibold mb-2">Total Revenue</h3>
           <p className="text-4xl font-bold">
             ${myProducts.reduce((sum, p) => sum + p.price, 0).toFixed(2)}
           </p>
         </div>
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-6 shadow-lg">
+        <div className="bg-gradient-to-br from-[#754626] to-[#63381D] text-white rounded-xl p-6 shadow-lg">
           <h3 className="text-lg font-semibold mb-2">Total Views</h3>
           <p className="text-4xl font-bold">
             {myProducts.reduce((sum, p) => sum + (p.views || 0), 0)}

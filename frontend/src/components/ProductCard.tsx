@@ -134,11 +134,11 @@ export default function ProductCard({
           <div className="mt-auto">
             <div className="flex items-baseline gap-2 mb-3">
               <span className="text-xl font-bold text-neutral-900">
-                ${product.price.toFixed(2)}
+                ₹{product.price.toLocaleString("en-IN")}
               </span>
               {discount > 0 && (
                 <span className="text-sm text-neutral-500 line-through">
-                  ${originalPrice.toFixed(2)}
+                  ₹{Math.round(originalPrice).toLocaleString("en-IN")}
                 </span>
               )}
             </div>
@@ -154,7 +154,8 @@ export default function ProductCard({
             <button
               onClick={handleAddToCart}
               disabled={!inStock}
-              className="w-full py-2 px-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 active:bg-primary-800 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors duration-200 text-sm"
+              className="w-full py-2 px-4 text-white rounded-lg font-medium disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors duration-200 text-sm hover:brightness-90 active:brightness-75"
+              style={{ backgroundColor: "#8C5630" }}
             >
               {inStock ? "Add to Cart" : "Out of Stock"}
             </button>
