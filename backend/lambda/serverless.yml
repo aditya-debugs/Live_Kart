@@ -1,0 +1,276 @@
+service: livekart-api
+
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  memorySize: 256
+  timeout: 30
+
+  # Environment variables (available to all functions)
+  environment:
+    AWS_REGION: ${self:provider.region}
+    PRODUCTS_TABLE: ${self:custom.productsTable}
+    ORDERS_TABLE: ${self:custom.ordersTable}
+    S3_BUCKET: ${self:custom.s3Bucket}
+    USER_POOL_ID: ${env:USER_POOL_ID}
+
+  # IAM permissions for Lambda functions
+  iam:
+    role:
+      statements:
+        # DynamoDB permissions
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Scan
+            - dynamodb:Query
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.productsTable}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.ordersTable}
+
+        # S3 permissions
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:DeleteObject
+          Resource:
+            - arn:aws:s3:::${self:custom.s3Bucket}/*
+
+# Custom variables
+custom:
+  productsTable: ${self:provider.stage}-livekart-products
+  ordersTable: ${self:provider.stage}-livekart-orders
+  s3Bucket: ${self:provider.stage}-livekart-product-images
+
+# Lambda Functions
+functions:
+  # ===== PRODUCTS API =====
+  getProducts:
+    handler: products/getProducts.handler
+    events:
+      - http:
+          path: products
+          method: get
+          cors: true
+
+  getProduct:
+    handler: products/getProduct.handler
+    events:
+      - http:
+          path: products/{id}
+          method: get
+          cors: true
+
+  createProduct:
+    handler: products/createProduct.handler
+    events:
+      - http:
+          path: products
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  updateProduct:
+    handler: products/updateProduct.handler
+    events:
+      - http:
+          path: products/{id}
+          method: put
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  deleteProduct:
+    handler: products/deleteProduct.handler
+    events:
+      - http:
+          path: products/{id}
+          method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  # ===== UPLOAD API =====
+  getUploadUrl:
+    handler: upload/getUploadUrl.handler
+    events:
+      - http:
+          path: upload-url
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  # ===== ORDERS API =====
+  createOrder:
+    handler: orders/createOrder.handler
+    events:
+      - http:
+          path: orders
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  getOrders:
+    handler: orders/getOrders.handler
+    events:
+      - http:
+          path: orders
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+# CloudFormation Resources
+resources:
+  Resources:
+    # DynamoDB Tables
+    ProductsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.productsTable}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: product_id
+            AttributeType: S
+          - AttributeName: vendor_id
+            AttributeType: S
+          - AttributeName: category
+            AttributeType: S
+        KeySchema:
+          - AttributeName: product_id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: vendor-index
+            KeySchema:
+              - AttributeName: vendor_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: category-index
+            KeySchema:
+              - AttributeName: category
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    OrdersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.ordersTable}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: order_id
+            AttributeType: S
+          - AttributeName: user_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: order_id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: user-orders-index
+            KeySchema:
+              - AttributeName: user_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    # S3 Bucket for Product Images
+    ProductImagesBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.s3Bucket}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - "*"
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+              AllowedHeaders:
+                - "*"
+              MaxAge: 3000
+
+    # S3 Bucket Policy (Allow public read access - optional)
+    # ProductImagesBucketPolicy:
+    #   Type: AWS::S3::BucketPolicy
+    #   Properties:
+    #     Bucket:
+    #       Ref: ProductImagesBucket
+    #     PolicyDocument:
+    #       Statement:
+    #         - Effect: Allow
+    #           Principal: '*'
+    #           Action:
+    #             - s3:GetObject
+    #           Resource:
+    #             Fn::Join:
+    #               - ''
+    #               - - 'arn:aws:s3:::'
+    #                 - Ref: ProductImagesBucket
+    #                 - '/*'
+
+    # API Gateway Cognito Authorizer
+    ApiGatewayAuthorizer:
+      Type: AWS::ApiGateway::Authorizer
+      Properties:
+        Name: CognitoAuthorizer
+        Type: COGNITO_USER_POOLS
+        IdentitySource: method.request.header.Authorization
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ProviderARNs:
+          - arn:aws:cognito-idp:${self:provider.region}:${aws:accountId}:userpool/${env:USER_POOL_ID}
+
+  # Stack Outputs
+  Outputs:
+    ApiEndpoint:
+      Description: API Gateway endpoint URL
+      Value:
+        Fn::Join:
+          - ""
+          - - https://
+            - Ref: ApiGatewayRestApi
+            - .execute-api.${self:provider.region}.amazonaws.com/${self:provider.stage}
+
+    ProductsTableName:
+      Description: DynamoDB Products Table Name
+      Value:
+        Ref: ProductsTable
+
+    OrdersTableName:
+      Description: DynamoDB Orders Table Name
+      Value:
+        Ref: OrdersTable
+
+    S3BucketName:
+      Description: S3 Bucket for Product Images
+      Value:
+        Ref: ProductImagesBucket
+
+plugins:
+  - serverless-offline
