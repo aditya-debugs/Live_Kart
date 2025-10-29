@@ -262,6 +262,7 @@ export default function CustomerHome() {
         cartCount={getTotalItems()}
         onCartClick={() => setShowCart(true)}
         onSearchChange={handleSearchChange}
+        wishlistCount={wishlist.size}
       />
 
       {/* Hero Banner (carousel) */}
@@ -397,6 +398,21 @@ export default function CustomerHome() {
               >
                 <ProductCard
                   product={product}
+                  onAddToCart={() => addToCart(product)}
+                  onToggleWishlist={(productId) => {
+                    const newWishlist = new Set(wishlist);
+                    if (wishlist.has(productId)) {
+                      newWishlist.delete(productId);
+                    } else {
+                      newWishlist.add(productId);
+                    }
+                    setWishlist(newWishlist);
+                    localStorage.setItem(
+                      "wishlist",
+                      JSON.stringify([...newWishlist])
+                    );
+                  }}
+                  isInWishlist={wishlist.has(product.product_id)}
                   onAddToCart={addToCart}
                   onToggleWishlist={toggleWishlist}
                   isInWishlist={wishlist.has(product.product_id)}

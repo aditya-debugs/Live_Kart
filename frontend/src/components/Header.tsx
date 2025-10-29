@@ -14,12 +14,14 @@ interface HeaderProps {
   cartCount?: number;
   onCartClick?: () => void;
   onSearchChange?: (value: string) => void;
+  wishlistCount?: number;
 }
 
 export default function Header({
   cartCount = 0,
   onCartClick,
   onSearchChange,
+  wishlistCount = 0,
 }: HeaderProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -86,13 +88,18 @@ export default function Header({
             <div className="hidden md:flex items-center space-x-6">
               {user ? (
                 <>
-                  <button
-                    className="flex items-center space-x-1 text-neutral-700 hover:text-primary-600 transition-colors"
-                    title="Wishlist"
+                  <Link
+                    to="/wishlist"
+                    className="flex items-center space-x-1 text-neutral-700 hover:text-primary-600 transition-colors relative"
                   >
                     <HeartIcon className="h-6 w-6" />
                     <span className="text-sm font-medium">Wishlist</span>
-                  </button>
+                    {wishlistCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                        {wishlistCount}
+                      </span>
+                    )}
+                  </Link>
 
                   <button
                     onClick={onCartClick}
