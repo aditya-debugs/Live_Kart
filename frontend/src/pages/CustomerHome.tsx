@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import bannerImage from "../assets/bannerimg.jpg";
+import bannerImage2 from "../assets/bannerimg2.jpg";
+import bannerImage3 from "../assets/bannerimg3.jpg";
+import bannerImage4 from "../assets/bannerimg4.jpg";
+import productimg1 from "../assets/productimg1.jpg";
+import productimg2 from "../assets/productimg2.jpg";
+import productimg3 from "../assets/productimg3.jpg";
+import productimg4 from "../assets/productimg4.jpg";
 import {
   ChevronRightIcon,
   SparklesIcon,
@@ -32,6 +40,20 @@ interface CartItem extends Product {
 }
 
 export default function CustomerHome() {
+  const banners = [bannerImage, bannerImage2, bannerImage3, bannerImage4];
+  const [currentBanner, setCurrentBanner] = useState(0);
+
+  // Auto-advance banners every 5 seconds
+  useEffect(() => {
+    const id = setInterval(() => {
+      setCurrentBanner((c) => (c + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [banners.length]);
+
+  const prevBanner = () =>
+    setCurrentBanner((c) => (c - 1 + banners.length) % banners.length);
+  const nextBanner = () => setCurrentBanner((c) => (c + 1) % banners.length);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -49,7 +71,26 @@ export default function CustomerHome() {
     try {
       setLoading(true);
       const res = await api.get("/getProducts");
-      setProducts(res.data);
+      // Ensure all products have image URLs
+      const productsWithImages = res.data.map(
+        (product: Product, index: number) => ({
+          ...product,
+          imageUrl:
+            index === 6
+              ? "/src/assets/productimg1.jpg"
+              : index === 7
+              ? "/src/assets/productimg2.jpg"
+              : index === 8
+              ? "/src/assets/productimg3.jpg"
+              : index === 9
+              ? "/src/assets/productimg4.jpg"
+              : product.imageUrl ||
+                `https://source.unsplash.com/400x400/?${
+                  product.category || "product"
+                }`,
+        })
+      );
+      setProducts(productsWithImages);
       setError("");
     } catch (err) {
       setError(
@@ -151,6 +192,8 @@ export default function CustomerHome() {
     window.scrollTo({ top: 600, behavior: "smooth" });
   };
 
+  const [sortOption, setSortOption] = useState<string>("featured");
+
   const filteredProducts = products.filter((p) => {
     const matchesSearch =
       p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -159,6 +202,21 @@ export default function CustomerHome() {
       selectedCategory === "all" ||
       p.category?.toLowerCase() === selectedCategory.toLowerCase();
     return matchesSearch && matchesCategory;
+  });
+
+  // Apply sorting based on the selected sort option
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    switch (sortOption) {
+      case "price-asc":
+        return a.price - b.price;
+      case "price-desc":
+        return b.price - a.price;
+      case "best-selling":
+        return (b.views || 0) - (a.views || 0);
+      // 'featured' and 'newest' fall back to original order
+      default:
+        return 0;
+    }
   });
 
   if (loading) {
@@ -206,45 +264,45 @@ export default function CustomerHome() {
         onSearchChange={handleSearchChange}
       />
 
-      {/* Hero Banner */}
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center"
-          >
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">
-              Welcome to LiveKart
-            </h1>
-            <p className="text-xl md:text-2xl mb-8 text-indigo-100">
-              Discover amazing products at unbeatable prices
-            </p>
-            <div className="flex flex-wrap justify-center gap-8 mt-12">
-              <div className="flex items-center space-x-3">
-                <TruckIcon className="h-8 w-8" />
-                <span className="text-lg">Free Shipping</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <ShieldCheckIcon className="h-8 w-8" />
-                <span className="text-lg">Secure Checkout</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <CreditCardIcon className="h-8 w-8" />
-                <span className="text-lg">Easy Returns</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <SparklesIcon className="h-8 w-8" />
-                <span className="text-lg">Best Quality</span>
-              </div>
-            </div>
-          </motion.div>
+      {/* Hero Banner (carousel) */}
+      <div className="hero-section relative h-[820px] md:h-[650px] sm:h-[520px] z-10 overflow-hidden bg-gray-900">
+        <div className="absolute inset-0">
+          <AnimatePresence initial={false}>
+            {banners.map((src, idx) => (
+              <motion.div
+                key={src}
+                className="absolute inset-0"
+                initial={{ opacity: 0 }}
+                animate={{
+                  opacity: idx === currentBanner ? 1 : 0,
+                  transition: { duration: 0.4 },
+                }}
+                transition={{
+                  duration: 0.4,
+                  ease: "easeInOut",
+                }}
+                style={{
+                  zIndex: idx === currentBanner ? 1 : 0,
+                }}
+              >
+                <img
+                  src={src}
+                  alt={`LiveKart Banner ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                {idx === 0 && (
+                  <div className="absolute inset-0 bg-black/20 pointer-events-none"></div>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
+        {/* keep spacing but remove any overlay text/icons so nothing appears during transitions */}
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-6 pt-28 pb-16" />
       </div>
 
       {/* Today's Deals Banner */}
-      <div className="bg-orange-500 text-white">
+      <div className="hot-deals">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -260,20 +318,19 @@ export default function CustomerHome() {
       </div>
 
       {/* Categories Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">
-            Shop by Category
-          </h2>
-          <CategoryGrid
-            onSelectCategory={handleCategorySelect}
-            selectedCategory={selectedCategory}
-          />
-        </motion.div>
+      <div style={{ backgroundColor: "#F3DCC0" }} className="py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <CategoryGrid
+              onSelectCategory={handleCategorySelect}
+              selectedCategory={selectedCategory}
+            />
+          </motion.div>
+        </div>
       </div>
 
       {/* Products Section */}
@@ -291,12 +348,16 @@ export default function CustomerHome() {
           </div>
 
           {/* Filter/Sort options */}
-          <select className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <option>Featured</option>
-            <option>Price: Low to High</option>
-            <option>Price: High to Low</option>
-            <option>Best Selling</option>
-            <option>Newest</option>
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="featured">Featured</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="best-selling">Best Selling</option>
+            <option value="newest">Newest</option>
           </select>
         </div>
 
@@ -313,6 +374,7 @@ export default function CustomerHome() {
               onClick={() => {
                 setSearchTerm("");
                 setSelectedCategory("all");
+                setSortOption("featured");
               }}
               className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold"
             >
@@ -326,7 +388,7 @@ export default function CustomerHome() {
             transition={{ delay: 0.3 }}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
           >
-            {filteredProducts.map((product, index) => (
+            {sortedProducts.slice(0, 12).map((product, index) => (
               <motion.div
                 key={product.product_id}
                 initial={{ opacity: 0, y: 20 }}

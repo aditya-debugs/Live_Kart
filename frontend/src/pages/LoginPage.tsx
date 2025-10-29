@@ -81,11 +81,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex">
+    <div className="min-h-screen bg-gray-50 flex">
       <Toaster />
 
       {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-[#8C5630] p-12 flex-col justify-between relative overflow-hidden">
         {/* Background decorations */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-20 w-72 h-72 bg-white rounded-full blur-3xl"></div>
@@ -95,7 +95,7 @@ export default function LoginPage() {
         <div className="relative z-10">
           <Link to="/" className="flex items-center space-x-3">
             <div className="bg-white rounded-xl p-3">
-              <ShoppingCartIcon className="h-10 w-10 text-indigo-600" />
+              <ShoppingCartIcon className="h-10 w-10 text-[#8C5630]" />
             </div>
             <span className="text-4xl font-bold text-white">LiveKart</span>
           </Link>
@@ -165,12 +165,10 @@ export default function LoginPage() {
         >
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center space-x-3 mb-8">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-3">
-              <ShoppingCartIcon className="h-8 w-8 text-white" />
+            <div className="bg-[#8C5630] rounded-xl p-3">
+              <ShoppingCartIcon className="h-8 w-8 text-[#8C5630]" />
             </div>
-            <span className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              LiveKart
-            </span>
+            <span className="text-3xl font-bold text-[#8C5630]">LiveKart</span>
           </div>
 
           {/* Header */}
@@ -184,51 +182,6 @@ export default function LoginPage() {
                 : "Sign in to continue shopping"}
             </p>
           </div>
-
-          {/* Demo Credentials */}
-          {!isSignUp && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-indigo-200 rounded-xl p-4">
-              <p className="text-sm font-semibold text-indigo-900 mb-3 flex items-center">
-                <span className="mr-2">🎯</span>
-                Quick Demo Login (Click to auto-fill)
-              </p>
-              <div className="space-y-2">
-                <button
-                  onClick={() =>
-                    handleDemoLogin("customer@livekart.com", "customer123")
-                  }
-                  className="w-full text-left p-3 bg-white hover:bg-indigo-50 rounded-lg transition text-sm border border-indigo-100"
-                >
-                  <span className="font-semibold text-indigo-900">
-                    Customer:
-                  </span>
-                  <span className="text-gray-600 ml-2">
-                    customer@livekart.com
-                  </span>
-                </button>
-                <button
-                  onClick={() =>
-                    handleDemoLogin("vendor@livekart.com", "vendor123")
-                  }
-                  className="w-full text-left p-3 bg-white hover:bg-indigo-50 rounded-lg transition text-sm border border-indigo-100"
-                >
-                  <span className="font-semibold text-indigo-900">Vendor:</span>
-                  <span className="text-gray-600 ml-2">
-                    vendor@livekart.com
-                  </span>
-                </button>
-                <button
-                  onClick={() =>
-                    handleDemoLogin("admin@livekart.com", "admin123")
-                  }
-                  className="w-full text-left p-3 bg-white hover:bg-indigo-50 rounded-lg transition text-sm border border-indigo-100"
-                >
-                  <span className="font-semibold text-indigo-900">Admin:</span>
-                  <span className="text-gray-600 ml-2">admin@livekart.com</span>
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Form */}
           <form
@@ -319,7 +272,7 @@ export default function LoginPage() {
                         onClick={() => setRole(r as any)}
                         className={`px-4 py-3 rounded-lg font-semibold text-sm transition-all ${
                           role === r
-                            ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
+                            ? "bg-[#8C5630] text-white shadow-lg"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                       >
@@ -348,7 +301,7 @@ export default function LoginPage() {
                   </div>
                   <button
                     type="button"
-                    className="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
+                    className="text-sm font-semibold text-[#8C5630] hover:text-[#734628]"
                   >
                     Forgot password?
                   </button>
@@ -360,7 +313,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-lg shadow-lg text-base font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-lg shadow-lg text-base font-semibold text-white bg-[#8C5630] hover:bg-[#734628] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8C5630] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               {loading ? (
                 <>
@@ -403,7 +356,7 @@ export default function LoginPage() {
                   setError("");
                   setPassword("");
                 }}
-                className="text-sm font-semibold text-indigo-600 hover:text-indigo-500 transition"
+                className="text-sm font-semibold text-[#8C5630] hover:text-[#734628]"
               >
                 {isSignUp
                   ? "Already have an account? Sign in"

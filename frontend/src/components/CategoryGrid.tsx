@@ -1,10 +1,12 @@
 import React from "react";
 import { motion } from "framer-motion";
 
+
 interface Category {
   id: string;
   name: string;
-  icon: string;
+  description: string;
+  image: string;
   color: string;
 }
 
@@ -17,50 +19,44 @@ const categories: Category[] = [
   {
     id: "electronics",
     name: "Electronics",
-    icon: "💻",
-    color: "from-blue-500 to-blue-600",
+    description: "Latest gadgets and smart devices",
+    image: "/src/assets/images/electronics.jpg",
+    color: "bg-blue-50",
   },
   {
     id: "fashion",
     name: "Fashion",
-    icon: "👔",
-    color: "from-pink-500 to-pink-600",
+    description: "Trendy clothing and accessories",
+    image: "/src/assets/categoryimg1.jpg",
+    color: "bg-pink-50",
   },
   {
-    id: "home",
-    name: "Home & Kitchen",
-    icon: "🏠",
-    color: "from-green-500 to-green-600",
-  },
-  {
-    id: "books",
-    name: "Books",
-    icon: "📚",
-    color: "from-yellow-500 to-yellow-600",
-  },
-  {
-    id: "sports",
-    name: "Sports",
-    icon: "⚽",
-    color: "from-red-500 to-red-600",
-  },
-  {
-    id: "toys",
-    name: "Toys & Games",
-    icon: "🎮",
-    color: "from-purple-500 to-purple-600",
+    id: "home-living",
+    name: "Home & Living",
+    description: "Furniture and home decor",
+    image: "/src/assets/categoryimg2.jpg",
+    color: "bg-amber-50",
   },
   {
     id: "beauty",
     name: "Beauty",
-    icon: "💄",
-    color: "from-indigo-500 to-indigo-600",
+    description: "Cosmetics and personal care",
+    image: "/src/assets/categoryimg3.jpg",
+    color: "bg-purple-50",
   },
   {
-    id: "automotive",
-    name: "Automotive",
-    icon: "🚗",
-    color: "from-gray-700 to-gray-800",
+    id: "sports",
+    name: "Sports & Fitness",
+    description: "Sports gear and equipment",
+    image: "/src/assets/images/sports.jpg",
+    color: "bg-green-50",
+  },
+  {
+    id: "books",
+    name: "Books & Media",
+    description: "Books, movies, and music",
+    image: "/src/assets/categoryimg4.jpg",
+    color: "bg-yellow-50",
   },
 ];
 
@@ -68,34 +64,62 @@ export default function CategoryGrid({
   onSelectCategory,
   selectedCategory,
 }: CategoryGridProps) {
+  const containerVariants = {
+    hidden: {},
+    visible: {
+      transition: {
+        staggerChildren: 0.06,
+      },
+    },
+  };
+
+  const itemVariant = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0 },
+  };
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4">
-      {categories.map((category, index) => (
-        <motion.button
-          key={category.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.05 }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => onSelectCategory(category.id)}
-          className={`relative overflow-hidden rounded-xl p-6 text-center transition-all ${
-            selectedCategory === category.id
-              ? "ring-4 ring-indigo-500 shadow-xl"
-              : "shadow-md hover:shadow-lg"
-          }`}
-        >
-          <div
-            className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-90`}
-          />
-          <div className="relative">
-            <div className="text-4xl mb-2">{category.icon}</div>
-            <div className="text-white font-semibold text-sm">
-              {category.name}
+    <div className="px-4 py-12 max-w-6xl mx-auto">
+      <div className="text-center max-w-2xl mx-auto mb-12">
+        <h2 className="text-3xl font-bold text-gray-800 mb-3">
+          Shop by Category
+        </h2>
+        <p className="text-gray-600">
+          Discover our wide range of products across various categories
+        </p>
+      </div>
+      <motion.div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {categories.map((category) => (
+          <motion.button
+            key={category.id}
+            variants={itemVariant}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onSelectCategory(category.id)}
+            className={`group relative text-center p-4 rounded-xl ${category.color} hover:shadow-md transition-all duration-300`}
+          >
+            <div className="aspect-[4/3] mb-4 rounded-lg overflow-hidden bg-white shadow-sm">
+              <img
+                src={category.image}
+                alt={category.name}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              />
             </div>
-          </div>
-        </motion.button>
-      ))}
+            <div className="relative">
+              <h3 className="text-gray-800 font-semibold text-lg mb-1">
+                {category.name}
+              </h3>
+              <p className="text-gray-600 text-xs">{category.description}</p>
+            </div>
+            <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-black ring-opacity-0 group-hover:ring-opacity-5 transition-opacity" />
+          </motion.button>
+        ))}
+      </motion.div>
     </div>
   );
 }

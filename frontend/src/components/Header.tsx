@@ -40,17 +40,20 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-sm">
-      <div className="border-b border-neutral-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+    <header className="fixed top-3 left-1/2 transform -translate-x-1/2 z-50 w-[95%] max-w-6xl">
+      <div className="bg-white/40 backdrop-blur-md shadow-lg rounded-3xl border border-white/10">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-12">
             {/* Logo */}
             <Link
               to="/customer"
               className="flex items-center space-x-2 flex-shrink-0"
             >
               <div className="flex items-center">
-                <ShoppingCartIcon className="h-8 w-8 text-primary-600" />
+                <ShoppingCartIcon
+                  className="h-8 w-8"
+                  style={{ color: "#8C5630" }}
+                />
                 <span className="ml-2 text-xl font-bold text-neutral-900">
                   LiveKart
                 </span>
@@ -68,7 +71,7 @@ export default function Header({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search products..."
-                  className="w-full px-4 py-2 pr-10 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-1 pr-10 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
                 <button
                   type="submit"
@@ -177,7 +180,8 @@ export default function Header({
               ) : (
                 <Link
                   to="/login"
-                  className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+                  className="px-5 py-1.5 text-white rounded-lg font-medium transition-colors text-sm hover:brightness-90"
+                  style={{ backgroundColor: "#8C5630" }}
                 >
                   Sign In
                 </Link>
@@ -220,7 +224,7 @@ export default function Header({
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-neutral-200 bg-white">
+        <div className="md:hidden border-t border-neutral-200/10 bg-white/40 backdrop-blur-md rounded-b-3xl overflow-hidden">
           <div className="px-4 py-4 space-y-3">
             {user ? (
               <>
