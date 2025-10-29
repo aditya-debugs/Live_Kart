@@ -1,8 +1,7 @@
 // S3 Upload Utilities for Product Images
-// Handles secure uploads using pre-signed URLs
+// Handles secure uploads using Lambda pre-signed URLs
 
-import { uploadData, getUrl, remove } from "aws-amplify/storage";
-import awsConfig from "../config/aws-config";
+import axios from "axios";
 
 export interface UploadProgress {
   loaded: number;
@@ -13,15 +12,14 @@ export interface UploadProgress {
 export interface UploadResult {
   key: string;
   url: string;
-  cdnUrl: string;
 }
 
 /**
- * Upload an image to S3 with progress tracking
+ * Upload an image to S3 using Lambda pre-signed URL
  * @param file - File to upload
  * @param folder - S3 folder (e.g., 'products', 'vendors')
  * @param onProgress - Progress callback
- * @returns Upload result with S3 key and URLs
+ * @returns Upload result with S3 key and URL
  */
 export async function uploadImage(
   file: File,
@@ -40,45 +38,44 @@ export async function uploadImage(
       throw new Error("Image size must be less than 5MB");
     }
 
-    // Generate unique filename
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(7);
-    const extension = file.name.split(".").pop();
-    const key = `${folder}/${timestamp}-${randomString}.${extension}`;
+    // Step 1: Get pre-signed URL from Lambda
+    const uploadUrlEndpoint = (import.meta as any).env.VITE_API_GET_UPLOAD_URL;
 
-    // Upload to S3
-    const result = await uploadData({
-      key,
-      data: file,
-      options: {
-        contentType: file.type,
-        onProgress: (event) => {
-          if (onProgress && event.totalBytes) {
-            onProgress({
-              loaded: event.transferredBytes,
-              total: event.totalBytes,
-              percentage: Math.round(
-                (event.transferredBytes / event.totalBytes) * 100
-              ),
-            });
-          }
-        },
+    if (!uploadUrlEndpoint) {
+      throw new Error(
+        "Upload URL endpoint not configured. Set VITE_API_GET_UPLOAD_URL in .env"
+      );
+    }
+
+    const uploadUrlResponse = await axios.post(uploadUrlEndpoint, {
+      filename: file.name,
+      contentType: file.type,
+      folder: folder,
+    });
+
+    const { uploadUrl, key, publicUrl } = uploadUrlResponse.data;
+
+    // Step 2: Upload file to S3 using pre-signed URL
+    await axios.put(uploadUrl, file, {
+      headers: {
+        "Content-Type": file.type,
       },
-    }).result;
-
-    // Get the S3 URL
-    const urlResult = await getUrl({ key });
-    const s3Url = urlResult.url.toString();
-
-    // Construct CloudFront CDN URL
-    const cdnUrl = awsConfig.cloudFront.url
-      ? `${awsConfig.cloudFront.url}/${key}`
-      : s3Url;
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          onProgress({
+            loaded: progressEvent.loaded,
+            total: progressEvent.total,
+            percentage: Math.round(
+              (progressEvent.loaded / progressEvent.total) * 100
+            ),
+          });
+        }
+      },
+    });
 
     return {
       key,
-      url: s3Url,
-      cdnUrl,
+      url: publicUrl,
     };
   } catch (error) {
     console.error("Error uploading image:", error);
@@ -87,7 +84,7 @@ export async function uploadImage(
 }
 
 /**
- * Upload multiple images
+ * Upload multiple images using Lambda pre-signed URLs
  * @param files - Array of files to upload
  * @param folder - S3 folder
  * @param onProgress - Progress callback for each file
@@ -110,51 +107,37 @@ export async function uploadMultipleImages(
 }
 
 /**
- * Get a pre-signed URL for secure image access
+ * Get S3 URL for an image key
  * @param key - S3 object key
- * @param expiresIn - URL expiration time in seconds (default: 1 hour)
- * @returns Pre-signed URL
+ * @returns S3 URL
  */
-export async function getPresignedUrl(
-  key: string,
-  expiresIn: number = 3600
-): Promise<string> {
-  try {
-    const result = await getUrl({
-      key,
-      options: {
-        expiresIn,
-      },
-    });
-    return result.url.toString();
-  } catch (error) {
-    console.error("Error getting pre-signed URL:", error);
-    throw error;
+export function getImageUrl(key: string): string {
+  const bucketName = (import.meta as any).env.VITE_S3_BUCKET;
+  const region = (import.meta as any).env.VITE_AWS_REGION || "us-east-1";
+
+  if (!bucketName) {
+    console.warn("S3 bucket name not configured");
+    return key; // Return key as fallback
   }
+
+  return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
 }
 
 /**
- * Get CloudFront URL for an image
- * @param key - S3 object key
- * @returns CloudFront CDN URL or S3 URL as fallback
+ * Delete an image by calling Lambda delete function
+ * @param productId - Product ID (Lambda will handle S3 key)
  */
-export function getCDNUrl(key: string): string {
-  if (awsConfig.cloudFront.url) {
-    return `${awsConfig.cloudFront.url}/${key}`;
-  }
-  // Fallback to S3 URL construction
-  return `https://${awsConfig.s3.bucketName}.s3.${awsConfig.region}.amazonaws.com/${key}`;
-}
-
-/**
- * Delete an image from S3
- * @param key - S3 object key
- */
-export async function deleteImage(key: string): Promise<void> {
+export async function deleteProductImage(productId: string): Promise<void> {
   try {
-    await remove({ key });
+    const deleteEndpoint = (import.meta as any).env.VITE_API_DELETE_PRODUCT;
+
+    if (!deleteEndpoint) {
+      throw new Error("Delete endpoint not configured");
+    }
+
+    await axios.delete(`${deleteEndpoint}?id=${productId}`);
   } catch (error) {
-    console.error("Error deleting image:", error);
+    console.error("Error deleting product image:", error);
     throw error;
   }
 }

@@ -18,13 +18,17 @@ import toast, { Toaster } from "react-hot-toast";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [role, setRole] = useState<"customer" | "vendor" | "admin">("customer");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [confirmationCode, setConfirmationCode] = useState("");
+  const [cognitoUsername, setCognitoUsername] = useState(""); // Store username for confirmation
 
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, confirmSignUp } = useAuth();
   const navigate = useNavigate();
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -59,14 +63,44 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await signUp(email, password, role);
+      const result = await signUp(email, password, username || email, role);
       setError("");
-      toast.success("Account created successfully! Please sign in.");
-      setIsSignUp(false);
-      setPassword("");
+      if (result.needsConfirmation) {
+        toast.success(result.message);
+        setCognitoUsername(result.username); // Store the generated username
+        setNeedsConfirmation(true);
+      } else {
+        toast.success("Account created successfully! Please sign in.");
+        setIsSignUp(false);
+        setPassword("");
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Sign up failed";
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      // Use the stored Cognito username (not email)
+      await confirmSignUp(cognitoUsername, confirmationCode);
+      toast.success("Email verified successfully! You can now sign in.");
+      setNeedsConfirmation(false);
+      setIsSignUp(false);
+      setPassword("");
+      setConfirmationCode("");
+      setCognitoUsername("");
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Confirmation failed";
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -174,10 +208,16 @@ export default function LoginPage() {
           {/* Header */}
           <div className="text-center">
             <h2 className="text-4xl font-bold text-gray-900 mb-3">
-              {isSignUp ? "Create Account" : "Welcome Back"}
+              {needsConfirmation
+                ? "Verify Your Email"
+                : isSignUp
+                ? "Create Account"
+                : "Welcome Back"}
             </h2>
             <p className="text-gray-600">
-              {isSignUp
+              {needsConfirmation
+                ? "Enter the verification code sent to your email"
+                : isSignUp
                 ? "Start your shopping journey today"
                 : "Sign in to continue shopping"}
             </p>
@@ -186,7 +226,13 @@ export default function LoginPage() {
           {/* Form */}
           <form
             className="mt-8 space-y-6"
-            onSubmit={isSignUp ? handleSignUp : handleSignIn}
+            onSubmit={
+              needsConfirmation
+                ? handleConfirmSignUp
+                : isSignUp
+                ? handleSignUp
+                : handleSignIn
+            }
           >
             {error && (
               <motion.div
@@ -199,67 +245,135 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-4">
-              {/* Email */}
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                >
-                  Email Address
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <EnvelopeIcon className="h-5 w-5 text-gray-400" />
-                  </div>
+              {/* Confirmation Code (only shown when needsConfirmation) */}
+              {needsConfirmation && (
+                <div>
+                  <label
+                    htmlFor="code"
+                    className="block text-sm font-semibold text-gray-700 mb-2"
+                  >
+                    Verification Code
+                  </label>
                   <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="code"
+                    type="text"
+                    value={confirmationCode}
+                    onChange={(e) => setConfirmationCode(e.target.value)}
                     required
-                    className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                    placeholder="you@example.com"
+                    className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                    placeholder="Enter 6-digit code"
+                    maxLength={6}
                   />
                 </div>
-              </div>
+              )}
+
+              {/* Username (only for sign up) */}
+              {!needsConfirmation && isSignUp && (
+                <div>
+                  <label
+                    htmlFor="username"
+                    className="block text-sm font-semibold text-gray-700 mb-2"
+                  >
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <UserCircleIcon className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="username"
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required
+                      className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                      placeholder="John Doe"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Email */}
+              {!needsConfirmation && (
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-semibold text-gray-700 mb-2"
+                  >
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Password */}
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                >
-                  Password
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <LockClosedIcon className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              {!needsConfirmation && (
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-semibold text-gray-700 mb-2"
                   >
-                    {showPassword ? (
-                      <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    )}
-                  </button>
+                    Password
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    >
+                      {showPassword ? (
+                        <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Password requirements hint for signup */}
+              {!needsConfirmation && isSignUp && (
+                <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
+                  <p className="text-xs text-blue-700 font-semibold mb-1">
+                    Password must contain:
+                  </p>
+                  <ul className="text-xs text-blue-600 space-y-0.5 ml-4 list-disc">
+                    <li>At least 8 characters</li>
+                    <li>Uppercase letter (A-Z)</li>
+                    <li>Lowercase letter (a-z)</li>
+                    <li>Number (0-9)</li>
+                    <li>Special character (@, !, #, $, etc.)</li>
+                  </ul>
+                </div>
+              )}
 
               {/* Role selection for signup */}
-              {isSignUp && (
+              {!needsConfirmation && isSignUp && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Sign up as
@@ -284,7 +398,7 @@ export default function LoginPage() {
               )}
 
               {/* Remember me / Forgot password */}
-              {!isSignUp && (
+              {!needsConfirmation && !isSignUp && (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <input
@@ -341,27 +455,45 @@ export default function LoginPage() {
                 </>
               ) : (
                 <>
-                  {isSignUp ? "Create Account" : "Sign In"}
+                  {needsConfirmation
+                    ? "Verify Email"
+                    : isSignUp
+                    ? "Create Account"
+                    : "Sign In"}
                   <ChevronRightIcon className="ml-2 h-5 w-5" />
                 </>
               )}
             </button>
 
-            {/* Toggle Sign In/Up */}
+            {/* Toggle Sign In/Up or Back to Sign In */}
             <div className="text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSignUp(!isSignUp);
-                  setError("");
-                  setPassword("");
-                }}
-                className="text-sm font-semibold text-[#8C5630] hover:text-[#734628]"
-              >
-                {isSignUp
-                  ? "Already have an account? Sign in"
-                  : "Don't have an account? Sign up"}
-              </button>
+              {needsConfirmation ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNeedsConfirmation(false);
+                    setConfirmationCode("");
+                  }}
+                  className="text-sm font-semibold text-[#8C5630] hover:text-[#734628]"
+                >
+                  Back to Sign In
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setError("");
+                    setPassword("");
+                    setUsername("");
+                  }}
+                  className="text-sm font-semibold text-[#8C5630] hover:text-[#734628]"
+                >
+                  {isSignUp
+                    ? "Already have an account? Sign in"
+                    : "Don't have an account? Sign up"}
+                </button>
+              )}
             </div>
           </form>
 

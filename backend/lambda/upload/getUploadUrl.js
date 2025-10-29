@@ -10,7 +10,7 @@ exports.handler = async (event) => {
 
   try {
     // Authenticate user
-    const auth = await authenticate(event, ["vendors", "admins"]);
+    const auth = await authenticate(event, ["vendor", "admin"]);
     if (!auth.success) {
       return createResponse(auth.statusCode, {
         success: false,

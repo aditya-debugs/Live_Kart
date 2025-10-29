@@ -11,7 +11,7 @@ exports.handler = async (event) => {
 
   try {
     // Authenticate and authorize (vendors and admins only)
-    const auth = await authenticate(event, ["vendors", "admins"]);
+    const auth = await authenticate(event, ["vendor", "admin"]);
     if (!auth.success) {
       return createResponse(auth.statusCode, {
         success: false,

@@ -12,10 +12,24 @@ const instance = axios.create({
   timeout: 10000, // 10 second timeout
 });
 
-// Add request interceptor for debugging
+// Add request interceptor for authentication and debugging
 instance.interceptors.request.use(
   (config) => {
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+
+    // Add authorization token if available
+    const tokens = localStorage.getItem("livekart_tokens");
+    if (tokens) {
+      try {
+        const { idToken } = JSON.parse(tokens);
+        if (idToken) {
+          config.headers.Authorization = `Bearer ${idToken}`;
+        }
+      } catch (e) {
+        console.error("Failed to parse auth tokens:", e);
+      }
+    }
+
     return config;
   },
   (error) => {

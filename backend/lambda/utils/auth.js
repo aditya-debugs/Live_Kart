@@ -54,25 +54,31 @@ async function verifyToken(token) {
 /**
  * Extract user info from decoded token
  * @param {Object} decoded - Decoded JWT token
- * @returns {Object} User info (sub, email, groups, etc.)
+ * @returns {Object} User info (sub, email, role, etc.)
  */
 function getUserInfo(decoded) {
   return {
     userId: decoded.sub,
     email: decoded.email,
     username: decoded["cognito:username"],
+    role: decoded["custom:role"] || "customer", // Get role from custom attribute
     groups: decoded["cognito:groups"] || [],
   };
 }
 
 /**
  * Check if user has required role
+ * @param {string} userRole - User's role from custom:role attribute
  * @param {Array} userGroups - User's Cognito groups
  * @param {Array} requiredRoles - Required roles (e.g., ['admin', 'vendor'])
  * @returns {boolean}
  */
-function hasRole(userGroups, requiredRoles) {
-  return requiredRoles.some((role) => userGroups.includes(role));
+function hasRole(userRole, userGroups, requiredRoles) {
+  // Check both custom:role attribute and cognito:groups
+  return (
+    requiredRoles.includes(userRole) ||
+    requiredRoles.some((role) => userGroups.includes(role))
+  );
 }
 
 /**
@@ -120,7 +126,10 @@ async function authenticate(event, requiredRoles = []) {
     const user = getUserInfo(decoded);
 
     // Check role if required
-    if (requiredRoles.length > 0 && !hasRole(user.groups, requiredRoles)) {
+    if (
+      requiredRoles.length > 0 &&
+      !hasRole(user.role, user.groups, requiredRoles)
+    ) {
       return {
         success: false,
         error: "Insufficient permissions",

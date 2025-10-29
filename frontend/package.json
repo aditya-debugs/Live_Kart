@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@aws-amplify/auth": "^5.1.4",
+    "@aws-sdk/client-cognito-identity-provider": "^3.920.0",
     "@headlessui/react": "^2.2.9",
     "@heroicons/react": "^2.2.0",
     "aws-amplify": "^5.3.3",
