@@ -69,11 +69,15 @@ export const lambdaAPI = {
       const token = getAuthToken();
       const userId = getCurrentUserId();
 
+      // Convert 'name' to 'title' for Lambda compatibility
+      const { name, imageUrl, ...rest } = productData;
+
       const response = await axios.post(
         LAMBDA_URLS.createProduct,
         {
-          ...productData,
-          vendorId: userId || "guest",
+          title: name, // Lambda expects 'title', not 'name'
+          imageKey: imageUrl, // Lambda expects 'imageKey', not 'imageUrl'
+          ...rest,
         },
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},

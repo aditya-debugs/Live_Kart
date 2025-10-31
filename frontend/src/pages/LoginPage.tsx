@@ -66,7 +66,18 @@ export default function LoginPage() {
       const result = await signUp(email, password, username || email, role);
       setError("");
       if (result.needsConfirmation) {
-        toast.success(result.message);
+        // Show appropriate message based on whether role assignment is needed
+        if (result.requiresGroupAssignment) {
+          toast.success(
+            result.message +
+              "\n\nNote: You selected '" +
+              role +
+              "' role. An admin will assign your role after email verification.",
+            { duration: 8000 }
+          );
+        } else {
+          toast.success(result.message);
+        }
         setCognitoUsername(result.username); // Store the generated username
         setNeedsConfirmation(true);
       } else {
@@ -93,6 +104,7 @@ export default function LoginPage() {
       // Use the stored Cognito username (not email)
       await confirmSignUp(cognitoUsername, confirmationCode);
       toast.success("Email verified successfully! You can now sign in.");
+
       setNeedsConfirmation(false);
       setIsSignUp(false);
       setPassword("");

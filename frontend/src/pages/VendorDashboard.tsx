@@ -56,7 +56,7 @@ export default function VendorDashboard() {
 
       // Use Lambda API to create product
       await lambdaAPI.createProduct({
-        name: title,
+        title: title, // ✅ Fixed: Changed from 'name' to 'title' to match Lambda
         description,
         price: Number(price),
         imageUrl: productImageUrl,

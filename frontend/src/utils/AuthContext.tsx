@@ -105,17 +105,40 @@ export const AuthProvider = ({ children }: any) => {
       const idTokenPayload = JSON.parse(atob(IdToken!.split(".")[1]));
 
       // Get role from Cognito Groups (cognito:groups in token)
-      // Or from custom attribute or default to customer
+      // Or from custom:role attribute or default to customer
       const cognitoGroups = idTokenPayload["cognito:groups"] || [];
+      const customRole = idTokenPayload["custom:role"];
+
       let userRole: "customer" | "vendor" | "admin" = "customer";
 
-      if (cognitoGroups.includes("Vendors")) {
-        userRole = "vendor";
-      } else if (cognitoGroups.includes("Admins")) {
-        userRole = "admin";
-      } else if (cognitoGroups.includes("Customers")) {
-        userRole = "customer";
+      // Priority 1: Check custom:role attribute (if configured)
+      if (customRole) {
+        userRole = customRole.toLowerCase();
       }
+      // Priority 2: Check Cognito Groups
+      else if (cognitoGroups.length > 0) {
+        // Check for vendor first (case-insensitive)
+        if (
+          cognitoGroups.some((g: string) => g.toLowerCase().includes("vendor"))
+        ) {
+          userRole = "vendor";
+        }
+        // Check for admin (case-insensitive)
+        else if (
+          cognitoGroups.some((g: string) => g.toLowerCase().includes("admin"))
+        ) {
+          userRole = "admin";
+        }
+        // Check for customer (case-insensitive)
+        else if (
+          cognitoGroups.some((g: string) =>
+            g.toLowerCase().includes("customer")
+          )
+        ) {
+          userRole = "customer";
+        }
+      }
+      // Priority 3: Default to customer if nothing found
 
       const userData = {
         username: idTokenPayload["cognito:username"] || email,
@@ -159,29 +182,39 @@ export const AuthProvider = ({ children }: any) => {
     role: string = "customer"
   ) => {
     setLoading(true);
+
+    // Generate a username from email (remove @ and domain)
+    // Or use the provided username, but ensure it's not in email format
+    const cognitoUsername = username.includes("@")
+      ? email.split("@")[0] + Math.random().toString(36).substring(2, 6)
+      : username.replace(/[^a-zA-Z0-9]/g, "");
+
     try {
-      // Generate a username from email (remove @ and domain)
-      // Or use the provided username, but ensure it's not in email format
-      const cognitoUsername = username.includes("@")
-        ? email.split("@")[0] + Math.random().toString(36).substring(2, 6)
-        : username.replace(/[^a-zA-Z0-9]/g, "");
+      const userAttributes: any[] = [
+        {
+          Name: "email",
+          Value: email,
+        },
+        {
+          Name: "name",
+          Value: username,
+        },
+      ];
+
+      // Try to add custom:role if it exists in the User Pool
+      // This provides automatic role assignment if configured
+      if (role) {
+        userAttributes.push({
+          Name: "custom:role",
+          Value: role,
+        });
+      }
 
       const command = new SignUpCommand({
         ClientId: CLIENT_ID,
-        Username: cognitoUsername, // Use non-email username
+        Username: cognitoUsername,
         Password: password,
-        UserAttributes: [
-          {
-            Name: "email",
-            Value: email,
-          },
-          {
-            Name: "name",
-            Value: username,
-          },
-          // Note: custom:role removed - attribute doesn't exist in User Pool
-          // Role will be managed separately or added after User Pool configuration
-        ],
+        UserAttributes: userAttributes,
       });
 
       const response = await cognitoClient.send(command);
@@ -192,13 +225,62 @@ export const AuthProvider = ({ children }: any) => {
         message:
           "Account created! Please check your email for verification code.",
         userSub: response.UserSub,
-        username: cognitoUsername, // Return the generated username
-        role: role, // Store role locally for now
+        username: cognitoUsername,
+        role: role,
         needsConfirmation: true,
       };
     } catch (error: any) {
       setLoading(false);
       console.error("Sign up error:", error);
+
+      // If custom:role doesn't exist, still create account
+      // Role will be assigned via Cognito groups
+      if (
+        error.message &&
+        (error.message.includes("custom:role") ||
+          error.message.includes("Attribute does not exist"))
+      ) {
+        console.warn(
+          "custom:role not configured. User will be added to Cognito group after confirmation."
+        );
+
+        // Remove custom:role and try again
+        const basicAttributes = [
+          {
+            Name: "email",
+            Value: email,
+          },
+          {
+            Name: "name",
+            Value: username,
+          },
+        ];
+
+        try {
+          const retryCommand = new SignUpCommand({
+            ClientId: CLIENT_ID,
+            Username: cognitoUsername,
+            Password: password,
+            UserAttributes: basicAttributes,
+          });
+
+          const retryResponse = await cognitoClient.send(retryCommand);
+
+          return {
+            success: true,
+            message:
+              "Account created! Please check your email for verification code. Note: Role will be assigned by administrator.",
+            userSub: retryResponse.UserSub,
+            username: cognitoUsername,
+            role: role,
+            needsConfirmation: true,
+            requiresGroupAssignment: true,
+          };
+        } catch (retryError: any) {
+          throw new Error(retryError.message || "Failed to sign up");
+        }
+      }
+
       throw new Error(error.message || "Failed to sign up");
     }
   };

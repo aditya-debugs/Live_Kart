@@ -9,7 +9,6 @@ import ProfilePage from "./pages/ProfilePage";
 import OrdersPage from "./pages/OrdersPage";
 import { AuthProvider } from "./utils/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
-import RoleDebug from "./components/RoleDebug";
 
 export default function App() {
   return (
@@ -74,9 +73,6 @@ export default function App() {
         {/* Default Route */}
         <Route path="/" element={<CustomerHome />} />
       </Routes>
-
-      {/* Debug component - remove after testing */}
-      <RoleDebug />
     </AuthProvider>
   );
 }
