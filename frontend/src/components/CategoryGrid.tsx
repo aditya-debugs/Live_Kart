@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-
+import { S3_IMAGES } from "../config/s3-images";
 
 interface Category {
   id: string;
@@ -20,42 +20,42 @@ const categories: Category[] = [
     id: "electronics",
     name: "Electronics",
     description: "Latest gadgets and smart devices",
-    image: "/src/assets/images/electronics.jpg",
+    image: S3_IMAGES.categories[0],
     color: "bg-blue-50",
   },
   {
     id: "fashion",
     name: "Fashion",
     description: "Trendy clothing and accessories",
-    image: "/src/assets/categoryimg1.jpg",
+    image: S3_IMAGES.categories[1],
     color: "bg-pink-50",
   },
   {
     id: "home-living",
     name: "Home & Living",
     description: "Furniture and home decor",
-    image: "/src/assets/categoryimg2.jpg",
+    image: S3_IMAGES.categories[2],
     color: "bg-amber-50",
   },
   {
     id: "beauty",
     name: "Beauty",
     description: "Cosmetics and personal care",
-    image: "/src/assets/categoryimg3.jpg",
+    image: S3_IMAGES.categories[3],
     color: "bg-purple-50",
   },
   {
     id: "sports",
     name: "Sports & Fitness",
     description: "Sports gear and equipment",
-    image: "/src/assets/images/sports.jpg",
+    image: S3_IMAGES.categories[4],
     color: "bg-green-50",
   },
   {
     id: "books",
     name: "Books & Media",
     description: "Books, movies, and music",
-    image: "/src/assets/categoryimg4.jpg",
+    image: S3_IMAGES.categories[5],
     color: "bg-yellow-50",
   },
 ];

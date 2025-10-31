@@ -227,6 +227,25 @@ export default function ProfilePage() {
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#8C5630] focus:ring-[#8C5630] disabled:bg-gray-50 disabled:text-gray-500"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Account Role
+                    </label>
+                    <div className="mt-1 flex items-center">
+                      <span
+                        className={`inline-flex items-center px-3 py-2 rounded-md text-sm font-medium ${
+                          user?.role === "admin"
+                            ? "bg-purple-100 text-purple-800"
+                            : user?.role === "vendor"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {user?.role?.charAt(0).toUpperCase() +
+                          user?.role?.slice(1) || "Customer"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Default Address */}

@@ -104,15 +104,23 @@ export const AuthProvider = ({ children }: any) => {
       // Decode ID token to get user info
       const idTokenPayload = JSON.parse(atob(IdToken!.split(".")[1]));
 
-      // Note: Since custom:role is not in Cognito User Pool,
-      // we default to 'customer' for now. In production, you should either:
-      // 1. Add the custom:role attribute to your User Pool
-      // 2. Store roles in DynamoDB and fetch after sign-in
-      // 3. Use Cognito Groups for role management
+      // Get role from Cognito Groups (cognito:groups in token)
+      // Or from custom attribute or default to customer
+      const cognitoGroups = idTokenPayload["cognito:groups"] || [];
+      let userRole: "customer" | "vendor" | "admin" = "customer";
+
+      if (cognitoGroups.includes("Vendors")) {
+        userRole = "vendor";
+      } else if (cognitoGroups.includes("Admins")) {
+        userRole = "admin";
+      } else if (cognitoGroups.includes("Customers")) {
+        userRole = "customer";
+      }
+
       const userData = {
         username: idTokenPayload["cognito:username"] || email,
         email: idTokenPayload.email || email,
-        role: "customer" as "customer" | "vendor" | "admin", // Default role
+        role: userRole,
         accessToken: AccessToken,
         idToken: IdToken,
       };

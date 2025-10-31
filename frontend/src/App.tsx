@@ -8,20 +8,75 @@ import WishlistPage from "./pages/WishlistPage";
 import ProfilePage from "./pages/ProfilePage";
 import OrdersPage from "./pages/OrdersPage";
 import { AuthProvider } from "./utils/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import RoleDebug from "./components/RoleDebug";
 
 export default function App() {
   return (
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/customer" element={<CustomerHome />} />
-        <Route path="/vendor" element={<VendorDashboard />} />
-        <Route path="/admin" element={<AdminOverview />} />
-        <Route path="/wishlist" element={<WishlistPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/orders" element={<OrdersPage />} />
+
+        {/* Customer Routes */}
+        <Route
+          path="/customer"
+          element={
+            <ProtectedRoute requiredRole="customer">
+              <CustomerHome />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wishlist"
+          element={
+            <ProtectedRoute>
+              <WishlistPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            <ProtectedRoute>
+              <OrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Vendor Routes */}
+        <Route
+          path="/vendor"
+          element={
+            <ProtectedRoute requiredRole="vendor">
+              <VendorDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminOverview />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Default Route */}
         <Route path="/" element={<CustomerHome />} />
       </Routes>
+
+      {/* Debug component - remove after testing */}
+      <RoleDebug />
     </AuthProvider>
   );
 }

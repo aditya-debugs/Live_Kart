@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import bannerImage from "../assets/bannerimg.jpg";
-import bannerImage2 from "../assets/bannerimg2.jpg";
-import bannerImage3 from "../assets/bannerimg3.jpg";
-import bannerImage4 from "../assets/bannerimg4.jpg";
-import productimg1 from "../assets/productimg1.jpg";
-import productimg2 from "../assets/productimg2.jpg";
-import productimg3 from "../assets/productimg3.jpg";
-import productimg4 from "../assets/productimg4.jpg";
 import {
   ChevronRightIcon,
   SparklesIcon,
@@ -23,6 +15,7 @@ import ProductCard from "../components/ProductCard";
 import CategoryGrid from "../components/CategoryGrid";
 import CartDrawer from "../components/CartDrawer";
 import toast, { Toaster } from "react-hot-toast";
+import { S3_IMAGES } from "../config/s3-images";
 
 type Product = {
   product_id: string;
@@ -41,7 +34,8 @@ interface CartItem extends Product {
 }
 
 export default function CustomerHome() {
-  const banners = [bannerImage, bannerImage2, bannerImage3, bannerImage4];
+  // Use S3 banners instead of local imports
+  const banners = S3_IMAGES.banners;
   const [currentBanner, setCurrentBanner] = useState(0);
 
   // Auto-advance banners every 5 seconds
@@ -78,18 +72,11 @@ export default function CustomerHome() {
         (product: Product, index: number) => ({
           ...product,
           imageUrl:
-            index === 6
-              ? "/src/assets/productimg1.jpg"
-              : index === 7
-              ? "/src/assets/productimg2.jpg"
-              : index === 8
-              ? "/src/assets/productimg3.jpg"
-              : index === 9
-              ? "/src/assets/productimg4.jpg"
-              : product.imageUrl ||
-                `https://source.unsplash.com/400x400/?${
-                  product.category || "product"
-                }`,
+            product.imageUrl ||
+            S3_IMAGES.products[index % S3_IMAGES.products.length] ||
+            `https://source.unsplash.com/400x400/?${
+              product.category || "product"
+            }`,
         })
       );
       setProducts(productsWithImages);
