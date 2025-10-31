@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import api from "../utils/api";
+import lambdaAPI from "../utils/lambdaAPI";
 import { useAuth } from "../utils/AuthContext";
 
 type Product = {
@@ -26,10 +27,12 @@ export default function VendorDashboard() {
 
   const loadMyProducts = async () => {
     try {
-      const res = await api.get("/getProducts");
+      // Use Lambda API
+      const res = await lambdaAPI.getProducts();
       // Filter products by current vendor
-      const vendorProducts = res.data.filter(
-        (p: any) => p.vendor_id === user?.username
+      const vendorProducts = (res.products || []).filter(
+        (p: any) =>
+          p.vendorId === user?.username || p.vendor_id === user?.username
       );
       setMyProducts(vendorProducts);
     } catch (err) {
@@ -51,13 +54,14 @@ export default function VendorDashboard() {
         imageUrl ||
         `https://via.placeholder.com/500?text=${encodeURIComponent(title)}`;
 
-      await api.post("/addProduct", {
-        title,
+      // Use Lambda API to create product
+      await lambdaAPI.createProduct({
+        name: title,
         description,
         price: Number(price),
         imageUrl: productImageUrl,
-        vendor_id: user.username,
         category,
+        stock: 100, // Default stock
       });
 
       alert("✅ Product added successfully!");

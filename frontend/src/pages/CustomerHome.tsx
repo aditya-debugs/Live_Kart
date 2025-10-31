@@ -16,6 +16,7 @@ import {
   CreditCardIcon,
 } from "@heroicons/react/24/outline";
 import api from "../utils/api";
+import lambdaAPI from "../utils/lambdaAPI";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
@@ -70,9 +71,10 @@ export default function CustomerHome() {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/getProducts");
+      // Use Lambda API instead of old API
+      const res = await lambdaAPI.getProducts();
       // Ensure all products have image URLs
-      const productsWithImages = res.data.map(
+      const productsWithImages = (res.products || []).map(
         (product: Product, index: number) => ({
           ...product,
           imageUrl:
@@ -399,22 +401,7 @@ export default function CustomerHome() {
                 <ProductCard
                   product={product}
                   onAddToCart={() => addToCart(product)}
-                  onToggleWishlist={(productId) => {
-                    const newWishlist = new Set(wishlist);
-                    if (wishlist.has(productId)) {
-                      newWishlist.delete(productId);
-                    } else {
-                      newWishlist.add(productId);
-                    }
-                    setWishlist(newWishlist);
-                    localStorage.setItem(
-                      "wishlist",
-                      JSON.stringify([...newWishlist])
-                    );
-                  }}
-                  isInWishlist={wishlist.has(product.product_id)}
-                  onAddToCart={addToCart}
-                  onToggleWishlist={toggleWishlist}
+                  onToggleWishlist={() => toggleWishlist(product.product_id)}
                   isInWishlist={wishlist.has(product.product_id)}
                 />
               </motion.div>

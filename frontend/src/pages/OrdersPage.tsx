@@ -16,6 +16,7 @@ import {
   writeReview,
   Order,
 } from "../utils/api";
+import lambdaAPI from "../utils/lambdaAPI";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { useAuth } from "../utils/AuthContext";
@@ -41,10 +42,12 @@ export default function OrdersPage() {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const response = await fetchOrders(timeFrame, filterStatus);
-      setOrders(response.orders);
+      // Use Lambda API to get orders
+      const response = await lambdaAPI.getOrders();
+      setOrders(response.orders || []);
     } catch (error) {
       toast.error("Failed to load orders");
+      setOrders([]);
     } finally {
       setLoading(false);
     }
