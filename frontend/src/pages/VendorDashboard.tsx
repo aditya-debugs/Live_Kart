@@ -5,10 +5,12 @@ import { useAuth } from "../utils/AuthContext";
 
 type Product = {
   product_id: string;
-  title: string;
+  name?: string;
+  title?: string;
   price: number;
   imageUrl?: string;
   views?: number;
+  vendorId?: string;
 };
 
 export default function VendorDashboard() {
@@ -29,11 +31,20 @@ export default function VendorDashboard() {
     try {
       // Use Lambda API
       const res = await lambdaAPI.getProducts();
-      // Filter products by current vendor
+      console.log("All products from Lambda:", res);
+
+      // Filter products by current vendor - check both vendorId and vendor_id
       const vendorProducts = (res.products || []).filter(
         (p: any) =>
-          p.vendorId === user?.username || p.vendor_id === user?.username
+          p.vendorId === user?.username ||
+          p.vendor_id === user?.username ||
+          p.vendorId === user?.email ||
+          p.vendor_id === user?.email
       );
+
+      console.log("Filtered vendor products:", vendorProducts);
+      console.log("Current user:", user);
+
       setMyProducts(vendorProducts);
     } catch (err) {
       console.error("Failed to load products", err);
@@ -246,12 +257,12 @@ export default function VendorDashboard() {
                 >
                   <img
                     src={product.imageUrl || "https://via.placeholder.com/80"}
-                    alt={product.title}
+                    alt={product.name || product.title}
                     className="w-20 h-20 object-cover rounded-lg"
                   />
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-900">
-                      {product.title}
+                      {product.name || product.title || "Unnamed Product"}
                     </h4>
                     <p className="text-sm text-gray-600 mt-1">
                       ${product.price.toFixed(2)}
@@ -259,6 +270,11 @@ export default function VendorDashboard() {
                     {product.views !== undefined && (
                       <p className="text-xs text-gray-500 mt-1">
                         {product.views} views
+                      </p>
+                    )}
+                    {product.vendorId && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Vendor: {product.vendorId}
                       </p>
                     )}
                   </div>

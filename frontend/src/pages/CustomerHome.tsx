@@ -19,8 +19,10 @@ import { S3_IMAGES } from "../config/s3-images";
 
 type Product = {
   product_id: string;
-  vendor_id: string;
-  title: string;
+  vendor_id?: string;
+  vendorId?: string;
+  name?: string;
+  title?: string;
   description?: string;
   price: number;
   imageUrl?: string;
@@ -67,10 +69,13 @@ export default function CustomerHome() {
       setLoading(true);
       // Use Lambda API instead of old API
       const res = await lambdaAPI.getProducts();
-      // Ensure all products have image URLs
+      console.log("Products from Lambda:", res);
+
+      // Ensure all products have image URLs and map 'name' to 'title' for display
       const productsWithImages = (res.products || []).map(
-        (product: Product, index: number) => ({
+        (product: any, index: number) => ({
           ...product,
+          title: product.title || product.name || "Unnamed Product", // Map name to title
           imageUrl:
             product.imageUrl ||
             S3_IMAGES.products[index % S3_IMAGES.products.length] ||

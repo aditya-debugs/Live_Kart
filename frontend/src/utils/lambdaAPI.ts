@@ -58,7 +58,8 @@ export const lambdaAPI = {
 
   // Create product (vendor only)
   createProduct: async (productData: {
-    name: string;
+    title?: string;
+    name?: string;
     price: number;
     description: string;
     category: string;
@@ -69,20 +70,42 @@ export const lambdaAPI = {
       const token = getAuthToken();
       const userId = getCurrentUserId();
 
-      // Convert 'name' to 'title' for Lambda compatibility
-      const { name, imageUrl, ...rest } = productData;
+      // Get vendor username from token
+      let vendorId = "system";
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          vendorId = payload["cognito:username"] || payload.sub || "system";
+        } catch (e) {
+          console.error("Failed to get vendorId from token:", e);
+        }
+      }
+
+      // Lambda expects 'name' field, not 'title'
+      const productName =
+        productData.title || productData.name || "Unnamed Product";
+
+      const requestBody = {
+        name: productName, // ✅ Lambda expects 'name'
+        price: productData.price,
+        description: productData.description,
+        category: productData.category,
+        imageUrl: productData.imageUrl || "",
+        stock: productData.stock || 100,
+        vendorId: vendorId, // ✅ Add vendorId to track which vendor created this
+      };
+
+      console.log("Creating product with data:", requestBody);
 
       const response = await axios.post(
         LAMBDA_URLS.createProduct,
-        {
-          title: name, // Lambda expects 'title', not 'name'
-          imageKey: imageUrl, // Lambda expects 'imageKey', not 'imageUrl'
-          ...rest,
-        },
+        requestBody,
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         }
       );
+
+      console.log("Product created successfully:", response.data);
       return response.data;
     } catch (error) {
       console.error("Failed to create product:", error);
