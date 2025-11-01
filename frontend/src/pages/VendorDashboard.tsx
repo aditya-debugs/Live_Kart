@@ -2,6 +2,12 @@ import React, { useState, useEffect } from "react";
 import api from "../utils/api";
 import lambdaAPI from "../utils/lambdaAPI";
 import { useAuth } from "../utils/AuthContext";
+import {
+  validateImage,
+  previewImage,
+  compressImage,
+  uploadImageToS3,
+} from "../utils/directS3Upload";
 
 type Product = {
   product_id: string;
@@ -19,7 +25,9 @@ export default function VendorDashboard() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("Electronics");
-  const [imageUrl, setImageUrl] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [loading, setLoading] = useState(false);
   const [myProducts, setMyProducts] = useState<Product[]>([]);
 
@@ -51,6 +59,59 @@ export default function VendorDashboard() {
     }
   };
 
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate image
+    const validation = validateImage(file);
+    if (!validation.valid) {
+      alert(`❌ ${validation.error}`);
+      e.target.value = ""; // Clear input
+      return;
+    }
+
+    // Show preview
+    try {
+      const preview = await previewImage(file);
+      setImagePreview(preview);
+      setImageFile(file);
+    } catch (error) {
+      console.error("Failed to preview image:", error);
+      alert("❌ Failed to preview image");
+    }
+  };
+
+  const uploadToS3 = async (file: File): Promise<string> => {
+    try {
+      // Compress image before upload
+      console.log("Compressing image...");
+      const compressedFile = await compressImage(file, 800, 800, 0.85);
+      console.log(
+        `Original size: ${(file.size / 1024).toFixed(2)}KB, Compressed: ${(
+          compressedFile.size / 1024
+        ).toFixed(2)}KB`
+      );
+
+      // Upload to S3 with progress tracking
+      console.log("Uploading to S3...");
+      const result = await uploadImageToS3(compressedFile, (progress) => {
+        setUploadProgress(progress.percentage);
+        console.log(`Upload progress: ${progress.percentage}%`);
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || "Upload failed");
+      }
+
+      console.log("Upload successful! URL:", result.url);
+      return result.url;
+    } catch (error: any) {
+      console.error("S3 Upload error:", error);
+      throw new Error(error.message || "Failed to upload image to S3");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -58,37 +119,48 @@ export default function VendorDashboard() {
       return;
     }
 
-    setLoading(true);
-    try {
-      // For now, use a placeholder image or URL
-      const productImageUrl =
-        imageUrl ||
-        `https://via.placeholder.com/500?text=${encodeURIComponent(title)}`;
+    if (!imageFile) {
+      alert("❌ Please select a product image");
+      return;
+    }
 
-      // Use Lambda API to create product
+    setLoading(true);
+    setUploadProgress(0);
+
+    try {
+      // Upload image to S3
+      console.log("Starting S3 upload...");
+      const productImageUrl = await uploadToS3(imageFile);
+      console.log("Image uploaded to:", productImageUrl);
+
+      // Create product with S3 image URL
+      console.log("Creating product in DynamoDB...");
       await lambdaAPI.createProduct({
-        title: title, // ✅ Fixed: Changed from 'name' to 'title' to match Lambda
+        title: title,
         description,
         price: Number(price),
         imageUrl: productImageUrl,
         category,
-        stock: 100, // Default stock
+        stock: 100,
       });
 
-      alert("✅ Product added successfully!");
+      setUploadProgress(100);
+      alert("✅ Product added successfully with image uploaded to S3!");
 
       // Reset form
       setTitle("");
       setDescription("");
       setPrice("");
-      setImageUrl("");
+      setImageFile(null);
+      setImagePreview("");
+      setUploadProgress(0);
       setCategory("Electronics");
 
       // Reload products
       loadMyProducts();
-    } catch (err) {
-      console.error(err);
-      alert("❌ Failed to add product");
+    } catch (err: any) {
+      console.error("Error:", err);
+      alert(`❌ Failed to add product: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -184,24 +256,57 @@ export default function VendorDashboard() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Image URL (Optional)
+                Product Image *
               </label>
-              <input
-                type="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition"
-                placeholder="https://example.com/image.jpg"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                💡 Try using images from Unsplash.com for free high-quality
-                photos
-              </p>
+              <div className="space-y-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#8C5630] file:text-white hover:file:bg-[#754626] file:cursor-pointer"
+                />
+                <p className="text-xs text-gray-500">
+                  📸 Upload a product image (JPEG, PNG, WebP, or GIF - Max 5MB)
+                </p>
+
+                {/* Image Preview */}
+                {imagePreview && (
+                  <div className="relative w-full h-48 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-full h-full object-contain"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImageFile(null);
+                        setImagePreview("");
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition"
+                      title="Remove image"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {/* Upload Progress */}
+                {loading && uploadProgress > 0 && (
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-[#8C5630] h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !imageFile}
               className="w-full py-3 bg-[#8C5630] text-white rounded-lg hover:bg-[#754626] transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {loading ? (
