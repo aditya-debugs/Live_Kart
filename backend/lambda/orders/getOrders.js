@@ -8,6 +8,16 @@ const { authenticate, createResponse } = require("../utils/auth");
 exports.handler = async (event) => {
   console.log("Event:", JSON.stringify(event, null, 2));
 
+  // Handle CORS preflight OPTIONS request for Lambda Function URLs
+  const method =
+    event.requestContext?.http?.method ||
+    event.httpMethod ||
+    event.requestContext?.httpMethod;
+
+  if (method === "OPTIONS") {
+    return createResponse(200, {});
+  }
+
   try {
     // Authenticate user
     const auth = await authenticate(event);

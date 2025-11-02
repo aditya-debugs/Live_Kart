@@ -60,7 +60,11 @@ export default function CheckoutModal({
       const orderData = {
         items: cart.map((item) => ({
           product_id: item.product_id,
+          productId: item.product_id, // Also send as productId
+          title: item.title || item.name || "Product",
+          price: item.price || 0,
           quantity: item.quantity,
+          vendorId: item.vendor_id || item.vendorId || "unknown",
         })),
         shippingAddress: {
           name,
@@ -73,7 +77,10 @@ export default function CheckoutModal({
           country,
         },
         paymentMethod,
+        totalAmount: total, // Add total amount
       };
+
+      console.log("Placing order with data:", orderData); // Debug log
 
       await onPlaceOrder(orderData);
 

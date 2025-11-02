@@ -21,23 +21,44 @@ function createCORSResponse(statusCode, body) {
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Allow-Headers":
         "Content-Type, Authorization, X-Requested-With",
-      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Max-Age": "86400",
     },
     body: JSON.stringify(body),
   };
 }
 
 exports.handler = async (event) => {
-  console.log("Event:", JSON.stringify(event, null, 2));
+  try {
+    console.log("Event:", JSON.stringify(event, null, 2));
 
-  // Handle CORS preflight OPTIONS request
-  if (event.requestContext.http.method === "OPTIONS") {
+    // Handle CORS preflight OPTIONS request for Lambda Function URLs
+    const method =
+      event.requestContext?.http?.method ||
+      event.httpMethod ||
+      event.requestContext?.httpMethod;
+
+    if (method === "OPTIONS") {
+      return {
+        statusCode: 200,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+          "Access-Control-Allow-Headers":
+            "Content-Type, Authorization, X-Requested-With",
+          "Access-Control-Max-Age": "86400",
+        },
+        body: "",
+      };
+    }
+  } catch (error) {
+    console.error("Error handling OPTIONS:", error);
     return {
       statusCode: 200,
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Headers":
+          "Content-Type, Authorization, X-Requested-With",
         "Access-Control-Max-Age": "86400",
       },
       body: "",

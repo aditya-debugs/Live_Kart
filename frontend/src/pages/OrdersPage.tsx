@@ -254,8 +254,14 @@ export default function OrdersPage() {
 
                       {/* Order Items */}
                       <div className="space-y-4">
-                        {order.items.map((item) => (
-                          <div key={item.product_id} className="flex space-x-4">
+                        {order.items.map((item, index) => (
+                          <div
+                            key={
+                              item.product_id ||
+                              `item-${order.order_id}-${index}`
+                            }
+                            className="flex space-x-4"
+                          >
                             <div className="flex-shrink-0 w-20 h-20">
                               <img
                                 src={

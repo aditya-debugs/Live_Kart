@@ -198,7 +198,14 @@ export default function CustomerHome() {
     try {
       console.log("Placing order with data:", orderData);
 
-      const result = await lambdaAPI.createOrder(orderData);
+      // Add userId and userEmail to the order
+      const enrichedOrderData = {
+        ...orderData,
+        userId: user?.sub || user?.userId || "guest",
+        userEmail: user?.email || "guest@example.com",
+      };
+
+      const result = await lambdaAPI.createOrder(enrichedOrderData);
 
       console.log("Order result:", result);
 
