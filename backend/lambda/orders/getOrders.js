@@ -18,8 +18,10 @@ exports.handler = async (event) => {
       });
     }
 
-    const isAdmin = auth.user.groups.includes("admins");
-    const isVendor = auth.user.groups.includes("vendors");
+    // Check user role (from custom:role attribute)
+    const userRole = auth.user.role || auth.user["custom:role"] || "customer";
+    const isAdmin = userRole === "admin";
+    const isVendor = userRole === "vendor";
 
     let orders = [];
 

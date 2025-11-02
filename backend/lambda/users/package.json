@@ -1,0 +1,21 @@
+{
+  "name": "livekart-user-triggers",
+  "version": "1.0.0",
+  "description": "Cognito Lambda triggers for LiveKart user management",
+  "main": "postConfirmation.js",
+  "scripts": {
+    "package": "zip -r post-confirmation.zip postConfirmation.js node_modules"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.470.0",
+    "@aws-sdk/lib-dynamodb": "^3.470.0"
+  },
+  "keywords": [
+    "cognito",
+    "lambda",
+    "trigger",
+    "dynamodb"
+  ],
+  "author": "LiveKart Team",
+  "license": "MIT"
+}

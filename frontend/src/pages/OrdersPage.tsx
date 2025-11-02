@@ -9,18 +9,34 @@ import {
   DocumentTextIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
-import {
-  fetchOrders,
-  buyAgain,
-  trackOrder,
-  writeReview,
-  Order,
-} from "../utils/api";
 import lambdaAPI from "../utils/lambdaAPI";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { useAuth } from "../utils/AuthContext";
 import toast from "react-hot-toast";
+
+// Order type matching Lambda response
+type Order = {
+  order_id: string;
+  user_id: string;
+  items: Array<{
+    product_id: string;
+    title?: string;
+    price: number;
+    quantity: number;
+    imageUrl?: string;
+  }>;
+  totalAmount: number;
+  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  createdAt: number;
+  shippingAddress?: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
+};
 
 export default function OrdersPage() {
   const { user } = useAuth();
@@ -83,8 +99,8 @@ export default function OrdersPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-IN", {
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString("en-IN", {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -191,19 +207,21 @@ export default function OrdersPage() {
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                         <div>
                           <p className="text-xs text-gray-500">ORDER PLACED</p>
-                          <p className="text-sm">{formatDate(order.date)}</p>
+                          <p className="text-sm">
+                            {formatDate(order.createdAt)}
+                          </p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-500">TOTAL</p>
                           <p className="text-sm font-medium">
-                            {formatPrice(order.total)}
+                            {formatPrice(order.totalAmount)}
                           </p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-500">SHIP TO</p>
                           <p className="text-sm truncate">
-                            {order.deliveryAddress.street},{" "}
-                            {order.deliveryAddress.city}
+                            {order.shippingAddress?.street || "N/A"},{" "}
+                            {order.shippingAddress?.city || "N/A"}
                           </p>
                         </div>
                         <div>
@@ -222,14 +240,6 @@ export default function OrdersPage() {
                         >
                           {order.status.charAt(0).toUpperCase() +
                             order.status.slice(1)}
-                          {order.expectedDelivery &&
-                            order.status !== "delivered" && (
-                              <span className="text-gray-600">
-                                {" "}
-                                - Expected by{" "}
-                                {formatDate(order.expectedDelivery)}
-                              </span>
-                            )}
                         </span>
                       </div>
 
@@ -259,18 +269,10 @@ export default function OrdersPage() {
                               </p>
                               {order.status === "delivered" && (
                                 <button
-                                  onClick={async () => {
-                                    try {
-                                      await buyAgain(
-                                        order.order_id,
-                                        item.product_id
-                                      );
-                                      toast.success("Product added to cart");
-                                    } catch (error) {
-                                      toast.error(
-                                        "Failed to add product to cart"
-                                      );
-                                    }
+                                  onClick={() => {
+                                    toast.success(
+                                      "Buy Again feature coming soon!"
+                                    );
                                   }}
                                   className="mt-2 text-sm text-[#8C5630] hover:text-[#754626]"
                                 >
@@ -285,17 +287,8 @@ export default function OrdersPage() {
                       {/* Order Actions */}
                       <div className="mt-4 flex space-x-4">
                         <button
-                          onClick={async () => {
-                            try {
-                              const trackingInfo = await trackOrder(
-                                order.order_id
-                              );
-                              toast.success(
-                                `Order is currently ${trackingInfo.currentStatus}`
-                              );
-                            } catch (error) {
-                              toast.error("Failed to track order");
-                            }
+                          onClick={() => {
+                            toast.success("Track Package feature coming soon!");
                           }}
                           className="text-sm text-[#8C5630] hover:text-[#754626]"
                         >

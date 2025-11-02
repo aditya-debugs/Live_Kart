@@ -14,6 +14,8 @@ import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
 import CategoryGrid from "../components/CategoryGrid";
 import CartDrawer from "../components/CartDrawer";
+import CheckoutModal from "../components/CheckoutModal";
+import OrderConfirmation from "../components/OrderConfirmation";
 import toast, { Toaster } from "react-hot-toast";
 import { S3_IMAGES } from "../config/s3-images";
 
@@ -56,6 +58,12 @@ export default function CustomerHome() {
   const [error, setError] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [showOrderConfirm, setShowOrderConfirm] = useState(false);
+  const [confirmedOrder, setConfirmedOrder] = useState<{
+    orderId: string;
+    totalAmount: number;
+  } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [wishlist, setWishlist] = useState<Set<string>>(new Set());
@@ -155,25 +163,59 @@ export default function CustomerHome() {
     return cart.reduce((sum, item) => sum + item.quantity, 0);
   };
 
-  const handleCheckout = async () => {
-    if (cart.length === 0) return;
+  const handleCheckoutClick = () => {
+    if (cart.length === 0) {
+      toast.error("Your cart is empty!");
+      return;
+    }
+    setShowCart(false);
+    setShowCheckout(true);
+  };
 
-    const totalAmount = cart.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-
+  const handlePlaceOrder = async (orderData: {
+    items: Array<{ product_id: string; quantity: number }>;
+    shippingAddress: any;
+    paymentMethod: string;
+  }) => {
     try {
-      await api.post("/placeOrder", {
-        customerEmail: "customer@example.com",
-        items: cart,
-        totalAmount: totalAmount.toFixed(2),
-      });
-      toast.success("🎉 Order placed successfully!");
-      setCart([]);
-      setShowCart(false);
-    } catch (err) {
-      toast.error("Failed to place order");
+      console.log("Placing order with data:", orderData);
+
+      const result = await lambdaAPI.createOrder(orderData);
+
+      console.log("Order result:", result);
+
+      if (result.success) {
+        const totalAmount = cart.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0
+        );
+        const shipping = totalAmount > 500 ? 0 : 50;
+        const tax = totalAmount * 0.18;
+        const total = totalAmount + shipping + tax;
+
+        // Clear cart and close checkout
+        setCart([]);
+        setShowCheckout(false);
+
+        // Show order confirmation
+        setConfirmedOrder({
+          orderId: result.order?.order_id || "ORDER-" + Date.now(),
+          totalAmount: total,
+        });
+        setShowOrderConfirm(true);
+
+        toast.success("🎉 Order placed successfully!");
+      } else {
+        toast.error("Failed to place order. Please try again.");
+      }
+    } catch (error: any) {
+      console.error("Order placement error:", error);
+      const errorMsg =
+        error?.response?.data?.error ||
+        error?.message ||
+        "Failed to place order";
+      toast.error(`Error: ${errorMsg}`);
+      throw error;
     }
   };
 
@@ -409,8 +451,29 @@ export default function CustomerHome() {
         items={cart}
         onUpdateQuantity={updateQuantity}
         onRemoveItem={removeFromCart}
-        onCheckout={handleCheckout}
+        onCheckout={handleCheckoutClick}
       />
+
+      {/* Checkout Modal */}
+      <CheckoutModal
+        isOpen={showCheckout}
+        onClose={() => setShowCheckout(false)}
+        cart={cart}
+        onPlaceOrder={handlePlaceOrder}
+      />
+
+      {/* Order Confirmation */}
+      {confirmedOrder && (
+        <OrderConfirmation
+          isOpen={showOrderConfirm}
+          onClose={() => {
+            setShowOrderConfirm(false);
+            setConfirmedOrder(null);
+          }}
+          orderId={confirmedOrder.orderId}
+          totalAmount={confirmedOrder.totalAmount}
+        />
+      )}
 
       <Footer />
     </div>

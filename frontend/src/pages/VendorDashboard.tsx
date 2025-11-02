@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import api from "../utils/api";
+import { useNavigate } from "react-router-dom";
 import lambdaAPI from "../utils/lambdaAPI";
 import { useAuth } from "../utils/AuthContext";
+import toast from "react-hot-toast";
 import {
   validateImage,
   previewImage,
@@ -14,13 +15,31 @@ type Product = {
   name?: string;
   title?: string;
   price: number;
+  category?: string;
   imageUrl?: string;
   views?: number;
   vendorId?: string;
 };
 
+type Order = {
+  order_id: string;
+  user_id: string;
+  items: Array<{
+    product_id: string;
+    title?: string;
+    price: number;
+    quantity: number;
+    vendor_id?: string;
+  }>;
+  totalAmount: number;
+  status: string;
+  createdAt: number;
+  shippingAddress?: any;
+};
+
 export default function VendorDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -30,10 +49,28 @@ export default function VendorDashboard() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [loading, setLoading] = useState(false);
   const [myProducts, setMyProducts] = useState<Product[]>([]);
+  const [filterCategory, setFilterCategory] = useState<string>("All");
+  const [vendorOrders, setVendorOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   useEffect(() => {
     loadMyProducts();
+    loadVendorOrders();
   }, []);
+
+  const loadVendorOrders = async () => {
+    try {
+      setLoadingOrders(true);
+      const res = await lambdaAPI.getOrders();
+      console.log("Vendor orders from Lambda:", res);
+      setVendorOrders(res.orders || []);
+    } catch (err) {
+      console.error("Failed to load orders", err);
+      toast.error("Failed to load orders");
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
 
   const loadMyProducts = async () => {
     try {
@@ -176,6 +213,12 @@ export default function VendorDashboard() {
     "Beauty",
     "Food",
   ];
+
+  // Filter products based on selected category
+  const filteredProducts =
+    filterCategory === "All"
+      ? myProducts
+      : myProducts.filter((p) => p.category === filterCategory);
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -342,47 +385,85 @@ export default function VendorDashboard() {
 
         {/* My Products List */}
         <div className="bg-white rounded-xl shadow-lg p-8">
-          <h2 className="text-2xl font-bold mb-6 text-gray-900">
-            My Products ({myProducts.length})
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              My Products ({filteredProducts.length})
+            </h2>
+
+            {/* Category Filter Dropdown */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">
+                Filter:
+              </label>
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8C5630] transition bg-white"
+              >
+                <option value="All">All Categories</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div className="space-y-4 max-h-[600px] overflow-y-auto">
-            {myProducts.length === 0 ? (
+            {filteredProducts.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">📦</div>
-                <p className="text-gray-500">No products yet</p>
+                <p className="text-gray-500">
+                  {filterCategory === "All"
+                    ? "No products yet"
+                    : `No products in ${filterCategory}`}
+                </p>
                 <p className="text-sm text-gray-400 mt-2">
-                  Add your first product to get started!
+                  {filterCategory === "All"
+                    ? "Add your first product to get started!"
+                    : "Try selecting a different category"}
                 </p>
               </div>
             ) : (
-              myProducts.map((product) => (
+              filteredProducts.map((product) => (
                 <div
                   key={product.product_id}
-                  className="flex items-center gap-4 p-4 bg-[#F5E6D3] rounded-lg hover:bg-[#E6D7C3] transition"
+                  className="flex items-center gap-4 p-4 bg-[#F5E6D3] rounded-lg hover:bg-[#E6D7C3] transition group"
                 >
                   <img
                     src={product.imageUrl || "https://via.placeholder.com/80"}
                     alt={product.name || product.title}
-                    className="w-20 h-20 object-cover rounded-lg"
+                    className="w-20 h-20 object-cover rounded-lg shadow-sm"
                   />
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-900">
                       {product.name || product.title || "Unnamed Product"}
                     </h4>
-                    <p className="text-sm text-gray-600 mt-1">
-                      ${product.price.toFixed(2)}
-                    </p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <p className="text-sm font-medium text-[#8C5630]">
+                        ${product.price.toFixed(2)}
+                      </p>
+                      {product.category && (
+                        <span className="text-xs bg-white px-2 py-1 rounded-full text-gray-600">
+                          {product.category}
+                        </span>
+                      )}
+                    </div>
                     {product.views !== undefined && (
                       <p className="text-xs text-gray-500 mt-1">
-                        {product.views} views
-                      </p>
-                    )}
-                    {product.vendorId && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        Vendor: {product.vendorId}
+                        👁️ {product.views} views
                       </p>
                     )}
                   </div>
+                  <button
+                    onClick={() =>
+                      navigate(`/vendor/analytics/${product.product_id}`)
+                    }
+                    className="px-4 py-2 bg-[#8C5630] text-white rounded-lg hover:bg-[#754626] transition opacity-0 group-hover:opacity-100 font-medium text-sm"
+                  >
+                    📊 View Analytics
+                  </button>
                 </div>
               ))
             )}
@@ -391,23 +472,138 @@ export default function VendorDashboard() {
       </div>
 
       {/* Quick Stats */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-br from-[#8C5630] to-[#754626] text-white rounded-xl p-6 shadow-lg">
-          <h3 className="text-lg font-semibold mb-2">Total Products</h3>
+          <h3 className="text-sm font-semibold mb-2 opacity-90">
+            Total Products
+          </h3>
           <p className="text-4xl font-bold">{myProducts.length}</p>
         </div>
-        <div className="bg-gradient-to-br from-[#A66B3A] to-[#8C5630] text-white rounded-xl p-6 shadow-lg">
-          <h3 className="text-lg font-semibold mb-2">Total Revenue</h3>
-          <p className="text-4xl font-bold">
-            ${myProducts.reduce((sum, p) => sum + p.price, 0).toFixed(2)}
-          </p>
-        </div>
-        <div className="bg-gradient-to-br from-[#754626] to-[#63381D] text-white rounded-xl p-6 shadow-lg">
-          <h3 className="text-lg font-semibold mb-2">Total Views</h3>
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-6 shadow-lg">
+          <h3 className="text-sm font-semibold mb-2 opacity-90">Total Views</h3>
           <p className="text-4xl font-bold">
             {myProducts.reduce((sum, p) => sum + (p.views || 0), 0)}
           </p>
         </div>
+        <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-6 shadow-lg">
+          <h3 className="text-sm font-semibold mb-2 opacity-90">
+            Inventory Value
+          </h3>
+          <p className="text-4xl font-bold">
+            ${myProducts.reduce((sum, p) => sum + p.price, 0).toFixed(2)}
+          </p>
+        </div>
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-6 shadow-lg">
+          <h3 className="text-sm font-semibold mb-2 opacity-90">Categories</h3>
+          <p className="text-4xl font-bold">
+            {new Set(myProducts.map((p) => p.category)).size}
+          </p>
+        </div>
+      </div>
+
+      {/* Vendor Orders Section */}
+      <div className="mt-8 bg-white rounded-xl shadow-lg p-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+          📦 Recent Orders ({vendorOrders.length})
+        </h2>
+
+        {loadingOrders ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8C5630]" />
+          </div>
+        ) : vendorOrders.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">📭</div>
+            <p className="text-gray-500">No orders yet</p>
+            <p className="text-sm text-gray-400 mt-2">
+              Orders containing your products will appear here
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {vendorOrders.map((order) => {
+              const orderTotal = order.items.reduce(
+                (sum, item) => sum + item.price * item.quantity,
+                0
+              );
+
+              return (
+                <div
+                  key={order.order_id}
+                  className="border border-gray-200 rounded-lg p-6 hover:border-[#8C5630] transition"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Order ID</p>
+                      <p className="font-mono text-sm">{order.order_id}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Status</p>
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                          order.status === "pending"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : order.status === "delivered"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {order.status.toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                      <p className="text-xs text-gray-500">Order Date</p>
+                      <p className="text-sm">
+                        {new Date(order.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Customer</p>
+                      <p className="text-sm truncate">{order.user_id}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Order Total</p>
+                      <p className="text-sm font-semibold text-[#8C5630]">
+                        ₹{orderTotal.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <p className="text-sm font-semibold mb-3">Your Items:</p>
+                    <div className="space-y-2">
+                      {order.items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-3 bg-gray-50 p-3 rounded"
+                        >
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">
+                              {item.title || "Product"}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Qty: {item.quantity}
+                            </p>
+                          </div>
+                          <p className="text-sm font-semibold">
+                            ₹{(item.price * item.quantity).toFixed(2)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

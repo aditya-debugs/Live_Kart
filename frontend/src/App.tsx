@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import CustomerHome from "./pages/CustomerHome";
 import VendorDashboard from "./pages/VendorDashboard";
+import ProductAnalytics from "./pages/ProductAnalytics";
 import AdminOverview from "./pages/AdminOverview";
 import WishlistPage from "./pages/WishlistPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -56,6 +57,14 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="vendor">
               <VendorDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vendor/analytics/:productId"
+          element={
+            <ProtectedRoute requiredRole="vendor">
+              <ProductAnalytics />
             </ProtectedRoute>
           }
         />

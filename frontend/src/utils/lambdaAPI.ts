@@ -116,7 +116,7 @@ export const lambdaAPI = {
   // Create order
   createOrder: async (orderData: {
     items: Array<{
-      productId: string;
+      product_id: string;
       quantity: number;
     }>;
     shippingAddress?: any;
