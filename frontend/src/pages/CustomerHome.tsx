@@ -6,11 +6,10 @@ import {
   TruckIcon,
   ShieldCheckIcon,
   CreditCardIcon,
+  ChevronLeftIcon,
 } from "@heroicons/react/24/outline";
-import api from "../utils/api";
 import lambdaAPI from "../utils/lambdaAPI";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import CustomerLayout from "../layouts/CustomerLayout";
 import ProductCard from "../components/ProductCard";
 import CategoryGrid from "../components/CategoryGrid";
 import CartDrawer from "../components/CartDrawer";
@@ -18,13 +17,15 @@ import CheckoutModal from "../components/CheckoutModal";
 import OrderConfirmation from "../components/OrderConfirmation";
 import toast, { Toaster } from "react-hot-toast";
 import { S3_IMAGES } from "../config/s3-images";
+import { useAuth } from "../utils/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 type Product = {
   product_id: string;
   vendor_id?: string;
   vendorId?: string;
   name?: string;
-  title?: string;
+  title: string; // Make title required
   description?: string;
   price: number;
   imageUrl?: string;
@@ -38,6 +39,9 @@ interface CartItem extends Product {
 }
 
 export default function CustomerHome() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
   // Use S3 banners instead of local imports
   const banners = S3_IMAGES.banners;
   const [currentBanner, setCurrentBanner] = useState(0);
@@ -105,6 +109,20 @@ export default function CustomerHome() {
   };
 
   const addToCart = (product: Product) => {
+    // Check if user is signed in
+    if (!user) {
+      toast.error("Please sign in to add items to cart", {
+        icon: "🔒",
+        duration: 3000,
+        position: "top-center",
+      });
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
+      return;
+    }
+
     setCart((prevCart) => {
       const existingItem = prevCart.find(
         (item) => item.product_id === product.product_id
@@ -257,52 +275,49 @@ export default function CustomerHome() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Header cartCount={0} />
+      <CustomerLayout cartCount={0}>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600 font-medium">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-600 mx-auto"></div>
+            <p className="mt-4 text-neutral-600 font-medium">
               Loading amazing products...
             </p>
           </div>
         </div>
-      </div>
+      </CustomerLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Header cartCount={0} />
+      <CustomerLayout cartCount={0}>
         <div className="max-w-2xl mx-auto mt-12 px-4">
           <div className="bg-red-50 border border-red-200 text-red-700 px-8 py-6 rounded-xl shadow-lg">
             <h3 className="font-bold text-xl mb-3">⚠️ Error</h3>
             <p className="mb-4">{error}</p>
             <button
               onClick={loadProducts}
-              className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-semibold"
+              className="px-6 py-2.5 bg-error text-white rounded-lg hover:bg-red-600 transition font-semibold"
             >
               Try Again
             </button>
           </div>
         </div>
-      </div>
+      </CustomerLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Toaster />
-      <Header
-        cartCount={getTotalItems()}
-        onCartClick={() => setShowCart(true)}
-        onSearchChange={handleSearchChange}
-        wishlistCount={wishlist.size}
-      />
+    <CustomerLayout
+      cartCount={getTotalItems()}
+      wishlistCount={wishlist.size}
+      onCartClick={() => setShowCart(true)}
+      onSearchChange={handleSearchChange}
+    >
+      <Toaster position="top-right" />
 
-      {/* Hero Banner (carousel) */}
-      <div className="hero-section relative h-[820px] md:h-[650px] sm:h-[520px] z-10 overflow-hidden bg-gray-900">
+      {/* Hero Banner Section */}
+      <div className="relative h-[500px] md:h-[600px] overflow-hidden bg-gradient-to-br from-primary-600 to-primary-800">
         <div className="absolute inset-0">
           <AnimatePresence initial={false}>
             {banners.map((src, idx) => (
@@ -312,10 +327,10 @@ export default function CustomerHome() {
                 initial={{ opacity: 0 }}
                 animate={{
                   opacity: idx === currentBanner ? 1 : 0,
-                  transition: { duration: 0.4 },
+                  transition: { duration: 0.5 },
                 }}
                 transition={{
-                  duration: 0.4,
+                  duration: 0.5,
                   ease: "easeInOut",
                 }}
                 style={{
@@ -474,8 +489,6 @@ export default function CustomerHome() {
           totalAmount={confirmedOrder.totalAmount}
         />
       )}
-
-      <Footer />
-    </div>
+    </CustomerLayout>
   );
 }

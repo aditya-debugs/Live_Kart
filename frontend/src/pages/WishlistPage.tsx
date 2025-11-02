@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { HeartIcon, ShoppingBagIcon } from "@heroicons/react/24/outline";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import CustomerLayout from "../layouts/CustomerLayout";
 import { useAuth } from "../utils/AuthContext";
 import CartDrawer from "../components/CartDrawer";
 import ProductCard from "../components/ProductCard";
-import toast from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 import { getWishlistProducts } from "../utils/api";
 
 type Product = {
@@ -106,29 +105,25 @@ export default function WishlistPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Header
-          cartCount={getTotalItems()}
-          onCartClick={() => setShowCart(true)}
-          wishlistCount={wishlist.size}
-        />
-        <div className="pt-28 pb-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
-          </div>
+      <CustomerLayout
+        cartCount={getTotalItems()}
+        wishlistCount={wishlist.size}
+        onCartClick={() => setShowCart(true)}
+      >
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
         </div>
-        <Footer />
-      </div>
+      </CustomerLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header
-        cartCount={getTotalItems()}
-        onCartClick={() => setShowCart(true)}
-        wishlistCount={wishlist.size}
-      />
+    <CustomerLayout
+      cartCount={getTotalItems()}
+      wishlistCount={wishlist.size}
+      onCartClick={() => setShowCart(true)}
+    >
+      <Toaster position="top-right" />
 
       <div className="pt-28 pb-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8 flex justify-between items-center">
@@ -205,6 +200,6 @@ export default function WishlistPage() {
           toast.success("Proceeding to checkout...");
         }}
       />
-    </div>
+    </CustomerLayout>
   );
 }

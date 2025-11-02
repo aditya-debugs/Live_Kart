@@ -9,10 +9,9 @@ import {
   EnvelopeIcon,
   PhoneIcon,
 } from "@heroicons/react/24/outline";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import CustomerLayout from "../layouts/CustomerLayout";
 import { useAuth } from "../utils/AuthContext";
-import toast from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 
 interface UserProfile {
   name: string;

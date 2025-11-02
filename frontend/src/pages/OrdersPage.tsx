@@ -10,10 +10,9 @@ import {
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import lambdaAPI from "../utils/lambdaAPI";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import CustomerLayout from "../layouts/CustomerLayout";
 import { useAuth } from "../utils/AuthContext";
-import toast from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 
 // Order type matching Lambda response
 type Order = {
@@ -116,22 +115,32 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header wishlistCount={0} cartCount={0} onCartClick={() => {}} />
+    <CustomerLayout wishlistCount={0} cartCount={0} onCartClick={() => {}}>
+      <Toaster position="top-right" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
+      {/* Page Header */}
+      <div className="bg-white border-b border-neutral-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h1 className="text-3xl font-bold text-neutral-900">My Orders</h1>
+          <p className="mt-2 text-neutral-600">
+            View and track your order history
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="lg:grid lg:grid-cols-12 lg:gap-8">
           {/* Navigation Sidebar */}
-          <aside className="lg:col-span-3">
-            <nav className="space-y-1">
+          <aside className="lg:col-span-3 mb-8 lg:mb-0">
+            <nav className="space-y-1 bg-white rounded-xl border border-neutral-200 p-2">
               {navigationItems.map((item) => (
                 <Link
                   key={item.label}
                   to={item.href}
-                  className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
+                  className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                     item.active
-                      ? "bg-[#8C5630] text-white"
-                      : "text-gray-900 hover:bg-gray-100"
+                      ? "bg-primary-600 text-white"
+                      : "text-neutral-700 hover:bg-neutral-50"
                   }`}
                 >
                   <item.icon className="w-5 h-5 mr-3" />
@@ -321,8 +330,6 @@ export default function OrdersPage() {
           </main>
         </div>
       </div>
-
-      <Footer />
-    </div>
+    </CustomerLayout>
   );
 }

@@ -316,7 +316,9 @@ export default function VendorDashboard() {
                     className="group relative border border-gray-200 rounded-lg p-4 hover:border-[#8C5630] hover:shadow-lg transition"
                   >
                     <img
-                      src={product.imageUrl || "https://via.placeholder.com/300"}
+                      src={
+                        product.imageUrl || "https://via.placeholder.com/300"
+                      }
                       alt={product.title || product.name}
                       className="w-full h-32 object-cover rounded-lg mb-3"
                     />
@@ -433,9 +435,7 @@ export default function VendorDashboard() {
                       required={!imageFile}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8C5630] focus:border-transparent"
                     />
-                    <PhotoIcon
-                      className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none"
-                    />
+                    <PhotoIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                   </div>
                 </div>
               </div>

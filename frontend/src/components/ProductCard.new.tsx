@@ -84,7 +84,9 @@ export default function ProductCard({
           <button
             onClick={handleToggleWishlist}
             className="absolute top-3 right-3 z-10 bg-white rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110"
-            aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+            aria-label={
+              isInWishlist ? "Remove from wishlist" : "Add to wishlist"
+            }
           >
             {isInWishlist ? (
               <HeartSolid className="h-5 w-5 text-error" />
