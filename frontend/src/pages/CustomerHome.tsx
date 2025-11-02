@@ -212,7 +212,7 @@ export default function CustomerHome() {
       // Add userId and userEmail to the order
       const enrichedOrderData = {
         ...orderData,
-        userId: user?.sub || user?.userId || "guest",
+        userId: user?.username || "guest",
         userEmail: user?.email || "guest@example.com",
       };
 
