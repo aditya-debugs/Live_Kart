@@ -1,0 +1,14 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:AdminAddUserToGroup",
+        "cognito-idp:GetGroup",
+        "cognito-idp:ListGroups"
+      ],
+      "Resource": "arn:aws:cognito-idp:us-east-1:*:userpool/us-east-1_pMr6t5GFA"
+    }
+  ]
+}

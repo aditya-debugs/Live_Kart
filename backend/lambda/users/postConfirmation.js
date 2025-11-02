@@ -10,11 +10,19 @@
 
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
+const {
+  CognitoIdentityProviderClient,
+  AdminAddUserToGroupCommand,
+} = require("@aws-sdk/client-cognito-identity-provider");
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
+const cognitoClient = new CognitoIdentityProviderClient({
+  region: process.env.AWS_REGION,
+});
 
 const USERS_TABLE = process.env.USERS_TABLE || "livekart-users";
+const USER_POOL_ID = process.env.USER_POOL_ID;
 
 /**
  * Cognito Post-Confirmation Trigger Handler
@@ -99,6 +107,9 @@ exports.handler = async (event) => {
       username: userName,
     });
 
+    // Add user to appropriate Cognito group based on role
+    await addUserToGroup(userName, userRole, event.userPoolId);
+
     // IMPORTANT: Must return the event object for Cognito
     return event;
   } catch (error) {
@@ -121,3 +132,43 @@ exports.handler = async (event) => {
     return event;
   }
 };
+
+/**
+ * Add user to Cognito group based on their role
+ * @param {string} username - Cognito username
+ * @param {string} role - User role (customer, vendor, admin)
+ * @param {string} userPoolId - Cognito User Pool ID
+ */
+async function addUserToGroup(username, role, userPoolId) {
+  try {
+    // Map role to Cognito group name
+    // Make sure these group names match your Cognito groups EXACTLY
+    const groupMap = {
+      customer: "Customers",
+      vendor: "Vendors",
+      admin: "Admins",
+    };
+
+    const groupName = groupMap[role.toLowerCase()] || "Customers";
+
+    console.log(`📋 Adding user '${username}' to group '${groupName}'...`);
+
+    const command = new AdminAddUserToGroupCommand({
+      UserPoolId: userPoolId,
+      Username: username,
+      GroupName: groupName,
+    });
+
+    await cognitoClient.send(command);
+
+    console.log(`✅ User '${username}' added to group '${groupName}'`);
+  } catch (error) {
+    console.error(`❌ Error adding user to Cognito group:`, error);
+
+    // Log but don't fail the entire signup process
+    // User is still created, just not in the right group yet
+    console.warn(
+      `⚠️ User signup completed but group assignment failed. User may need to be added to group manually.`
+    );
+  }
+}

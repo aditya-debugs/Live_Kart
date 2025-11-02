@@ -12,7 +12,6 @@ import {
   HomeIcon,
   CubeIcon,
   ClipboardDocumentListIcon,
-  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 
 interface VendorLayoutProps {
@@ -37,7 +36,6 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
     { name: "Dashboard", href: "/vendor", icon: HomeIcon },
     { name: "Products", href: "/vendor/products", icon: CubeIcon },
     { name: "Orders", href: "/vendor/orders", icon: ClipboardDocumentListIcon },
-    { name: "Analytics", href: "/vendor/analytics", icon: ChartBarIcon },
   ];
 
   return (
@@ -252,14 +250,6 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
             <div>
               <h3 className="font-semibold mb-4">Account</h3>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li>
-                  <Link
-                    to="/vendor/analytics"
-                    className="hover:text-white transition-colors"
-                  >
-                    Analytics
-                  </Link>
-                </li>
                 <li>
                   <Link
                     to="/profile"
