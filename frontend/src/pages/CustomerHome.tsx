@@ -76,6 +76,17 @@ export default function CustomerHome() {
     loadProducts();
   }, []);
 
+  // Handle hash navigation for categories section
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash === "#categories") {
+      setTimeout(() => {
+        const element = document.getElementById("categories");
+        element?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, []);
+
   const loadProducts = async () => {
     try {
       setLoading(true);
@@ -370,7 +381,11 @@ export default function CustomerHome() {
       </div>
 
       {/* Categories Section */}
-      <div style={{ backgroundColor: "#F3DCC0" }} className="py-12">
+      <div
+        id="categories"
+        style={{ backgroundColor: "#F3DCC0" }}
+        className="py-12"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0 }}

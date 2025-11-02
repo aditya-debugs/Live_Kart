@@ -1,9 +1,10 @@
 // Customer Layout - Floating Header with Brown Theme
 // Shopping-focused experience with compact floating navbar
 
-import React, { ReactNode } from "react";
+import React, { ReactNode, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
+import lambdaAPI from "../utils/lambdaAPI";
 import {
   ShoppingBagIcon,
   HeartIcon,
@@ -38,6 +39,42 @@ export default function CustomerLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [showUserMenu, setShowUserMenu] = React.useState(false);
+  const [userName, setUserName] = useState(user?.username || "");
+
+  // Load user's actual name from profile
+  useEffect(() => {
+    const loadUserName = async () => {
+      try {
+        // Try to load from DynamoDB first
+        const response = await lambdaAPI.getUserProfile();
+        if (response.success && response.user?.name) {
+          setUserName(response.user.name);
+          return;
+        }
+      } catch (error) {
+        console.log("Loading from localStorage fallback");
+      }
+
+      // Fallback to localStorage
+      const savedProfile = localStorage.getItem(
+        `livekart_profile_${user?.email}`
+      );
+      if (savedProfile) {
+        const profile = JSON.parse(savedProfile);
+        if (profile.name) {
+          setUserName(profile.name);
+          return;
+        }
+      }
+
+      // Final fallback to username
+      setUserName(user?.username || "User");
+    };
+
+    if (user) {
+      loadUserName();
+    }
+  }, [user]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,7 +179,7 @@ export default function CustomerLayout({
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
                         <div className="px-4 py-2 border-b border-gray-200">
                           <p className="text-sm font-medium text-gray-900">
-                            {user?.username}
+                            {userName}
                           </p>
                           <p className="text-xs text-gray-500">{user?.email}</p>
                         </div>
@@ -278,41 +315,54 @@ export default function CustomerLayout({
       {/* Main Content with padding for floating header */}
       <main className="flex-1 pt-20">{children}</main>
 
-      {/* Professional Footer */}
-      <footer className="bg-gray-900 text-white mt-auto">
+      {/* Professional Brown Footer - Matching Brand Color */}
+      <footer
+        style={{ backgroundColor: "#8C5630" }}
+        className="text-white mt-auto"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center space-x-2 mb-4">
-                <ShoppingBagIcon
-                  className="h-8 w-8"
-                  style={{ color: "#8C5630" }}
-                />
+                <ShoppingBagIcon className="h-8 w-8 text-white" />
                 <span className="text-2xl font-bold">LiveKart</span>
               </div>
-              <p className="text-gray-400 text-sm mb-4">
+              <p className="text-white/80 text-sm mb-4">
                 Your trusted online marketplace for quality products from
                 verified vendors.
               </p>
-              <p className="text-gray-500 text-xs">
+              <p className="text-white/60 text-xs">
                 © 2025 LiveKart. All rights reserved.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-4">Shop</h3>
-              <ul className="space-y-2 text-sm text-gray-400">
+              <h3 className="font-semibold mb-4 text-white">Shop</h3>
+              <ul className="space-y-2 text-sm text-white/80">
                 <li>
                   <Link
                     to="/customer"
                     className="hover:text-white transition-colors"
+                    onClick={() =>
+                      window.scrollTo({ top: 0, behavior: "smooth" })
+                    }
                   >
                     All Products
                   </Link>
                 </li>
                 <li>
                   <Link
-                    to="/customer"
+                    to="/customer#categories"
                     className="hover:text-white transition-colors"
+                    onClick={(e) => {
+                      if (window.location.pathname === "/customer") {
+                        e.preventDefault();
+                        const element = document.getElementById("categories");
+                        element?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                      }
+                    }}
                   >
                     Categories
                   </Link>
@@ -321,6 +371,9 @@ export default function CustomerLayout({
                   <Link
                     to="/wishlist"
                     className="hover:text-white transition-colors"
+                    onClick={() =>
+                      window.scrollTo({ top: 0, behavior: "smooth" })
+                    }
                   >
                     Wishlist
                   </Link>
@@ -328,12 +381,15 @@ export default function CustomerLayout({
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-4">Account</h3>
-              <ul className="space-y-2 text-sm text-gray-400">
+              <h3 className="font-semibold mb-4 text-white">Account</h3>
+              <ul className="space-y-2 text-sm text-white/80">
                 <li>
                   <Link
                     to="/orders"
                     className="hover:text-white transition-colors"
+                    onClick={() =>
+                      window.scrollTo({ top: 0, behavior: "smooth" })
+                    }
                   >
                     My Orders
                   </Link>
@@ -342,11 +398,38 @@ export default function CustomerLayout({
                   <Link
                     to="/profile"
                     className="hover:text-white transition-colors"
+                    onClick={() =>
+                      window.scrollTo({ top: 0, behavior: "smooth" })
+                    }
                   >
                     Profile
                   </Link>
                 </li>
               </ul>
+            </div>
+          </div>
+
+          {/* Bottom Section with Additional Links */}
+          <div className="border-t border-white/20 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center text-sm">
+            <p className="text-white/60">
+              © 2025 LiveKart. All rights reserved.
+            </p>
+            <div className="flex space-x-6 mt-4 md:mt-0 text-white/80">
+              <Link
+                to="/privacy"
+                className="hover:text-white transition-colors"
+              >
+                Privacy Policy
+              </Link>
+              <Link to="/terms" className="hover:text-white transition-colors">
+                Terms of Service
+              </Link>
+              <Link
+                to="/cookies"
+                className="hover:text-white transition-colors"
+              >
+                Cookies
+              </Link>
             </div>
           </div>
         </div>

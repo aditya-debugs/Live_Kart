@@ -96,7 +96,8 @@ export default function VendorDashboard() {
         throw new Error(result.error || "Upload failed");
       }
 
-      return result.key; // Use 'key' instead of 'imageKey'
+      // Return the full S3 URL, not just the key
+      return result.url;
     } catch (error) {
       console.error("S3 upload error:", error);
       throw error;
@@ -114,15 +115,19 @@ export default function VendorDashboard() {
     setUploadProgress(0);
 
     try {
-      const imageKey = await uploadToS3(imageFile);
+      const imageUrl = await uploadToS3(imageFile);
+
+      console.log("✅ Image uploaded to S3:", imageUrl);
 
       const productData = {
         title,
         description,
         price: parseFloat(price),
         category,
-        imageKey,
+        imageUrl, // Changed from imageKey to imageUrl
       };
+
+      console.log("📦 Creating product with data:", productData);
 
       const result = await lambdaAPI.createProduct(productData);
 
@@ -148,8 +153,53 @@ export default function VendorDashboard() {
   };
 
   const handleDelete = async (productId: string) => {
-    toast.error("Delete functionality coming soon");
-    // Note: lambdaAPI.deleteProduct() needs to be implemented
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this product? This action cannot be undone."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      console.log("🗑️ Deleting product:", productId);
+
+      const result = await lambdaAPI.deleteProduct(productId);
+
+      if (result.success) {
+        toast.success("Product deleted successfully! 🗑️");
+        console.log("✅ Product deleted");
+
+        // Reload products to update the list
+        await loadMyProducts();
+      } else {
+        throw new Error(result.error || "Failed to delete product");
+      }
+    } catch (error: any) {
+      console.error("❌ Failed to delete product:", error);
+
+      // Show debug info from the error
+      if (error.response?.data?.debug) {
+        console.error("🔍 DEBUG INFO:", error.response.data.debug);
+        alert(
+          `Delete failed!\n\n` +
+            `Product vendor: ${
+              error.response.data.debug.productVendorId ||
+              error.response.data.debug.productVendorIdAlt
+            }\n` +
+            `Your userId: ${error.response.data.debug.yourUserId}\n` +
+            `Your username: ${error.response.data.debug.yourUsername}\n\n` +
+            `${error.response.data.debug.message}`
+        );
+      }
+
+      toast.error(
+        error.response?.data?.error ||
+          error.message ||
+          "Failed to delete product"
+      );
+    }
   };
 
   // Calculate stats
@@ -316,7 +366,9 @@ export default function VendorDashboard() {
                     className="group relative border border-gray-200 rounded-lg p-4 hover:border-[#8C5630] hover:shadow-lg transition"
                   >
                     <img
-                      src={product.imageUrl || "https://via.placeholder.com/300"}
+                      src={
+                        product.imageUrl || "https://via.placeholder.com/300"
+                      }
                       alt={product.title || product.name}
                       className="w-full h-32 object-cover rounded-lg mb-3"
                     />
@@ -433,9 +485,7 @@ export default function VendorDashboard() {
                       required={!imageFile}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8C5630] focus:border-transparent"
                     />
-                    <PhotoIcon
-                      className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none"
-                    />
+                    <PhotoIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                   </div>
                 </div>
               </div>

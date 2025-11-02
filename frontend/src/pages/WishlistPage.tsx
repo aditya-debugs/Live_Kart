@@ -180,8 +180,6 @@ export default function WishlistPage() {
         )}
       </div>
 
-      <Footer />
-
       <CartDrawer
         isOpen={showCart}
         onClose={() => setShowCart(false)}
